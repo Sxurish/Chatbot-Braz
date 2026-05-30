@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getUserName, mockAppointments } from "@/lib/mock-data";
+import { getUserName } from "@/lib/mock-data";
+import { listAppointments } from "@/lib/data/crm";
 import { formatDate } from "@/lib/utils";
 
 const MODALITY = {
@@ -13,7 +14,8 @@ const MODALITY = {
   telefone: { label: "Telefone", icon: Phone },
 };
 
-export default function AgendaPage() {
+export default async function AgendaPage() {
+  const appointments = await listAppointments();
   return (
     <>
       <PageHeader
@@ -25,11 +27,11 @@ export default function AgendaPage() {
           </Button>
         }
       />
-      {mockAppointments.length === 0 ? (
+      {appointments.length === 0 ? (
         <EmptyState title="Nenhum agendamento" />
       ) : (
         <div className="space-y-3">
-          {mockAppointments.map((appt) => {
+          {appointments.map((appt) => {
             const mod = MODALITY[appt.modality];
             const Icon = mod.icon;
             return (

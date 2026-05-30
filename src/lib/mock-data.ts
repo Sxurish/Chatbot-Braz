@@ -3,6 +3,7 @@
  * com o Supabase. Cobrem os principais cenários de cada área prioritária.
  */
 import type {
+  AppNotification,
   Appointment,
   FollowUp,
   Lead,
@@ -455,6 +456,64 @@ export const mockFollowUps: FollowUp[] = [
     status: "pendente",
     assigned_to: "u2",
     created_at: "2026-05-28T09:05:00Z",
+  },
+];
+
+export const mockNotifications: AppNotification[] = [
+  {
+    id: "n1",
+    user_id: "u1",
+    type: "lead_urgente",
+    title: "Lead urgente — Penal (flagrante)",
+    body: "Carlos Henrique Souza: audiência de custódia em menos de 24h.",
+    read: false,
+    entity_type: "lead",
+    entity_id: "lead-001",
+    created_at: "2026-05-30T03:25:00Z",
+  },
+  {
+    id: "n2",
+    user_id: "u2",
+    type: "tarefa_vencendo",
+    title: "Tarefa próxima do prazo",
+    body: "Protocolar defesa no PAD — vence em 05/06.",
+    read: false,
+    entity_type: "task",
+    entity_id: "task-2",
+    created_at: "2026-05-30T08:00:00Z",
+  },
+  {
+    id: "n3",
+    user_id: "u2",
+    type: "documento_enviado",
+    title: "Novo documento enviado",
+    body: "Roberto Carlos Menezes enviou extratos bancários.",
+    read: false,
+    entity_type: "lead",
+    entity_id: "lead-005",
+    created_at: "2026-05-26T09:31:00Z",
+  },
+  {
+    id: "n4",
+    user_id: "u2",
+    type: "follow_up_pendente",
+    title: "Follow-up pendente",
+    body: "Cobrar envio do CNIS — Maria Aparecida Gomes.",
+    read: true,
+    entity_type: "lead",
+    entity_id: "lead-004",
+    created_at: "2026-05-28T09:05:00Z",
+  },
+  {
+    id: "n5",
+    user_id: "u1",
+    type: "novo_lead",
+    title: "Novo lead recebido",
+    body: "Ana Beatriz Rocha — Regularização Imobiliária (usucapião).",
+    read: true,
+    entity_type: "lead",
+    entity_id: "lead-006",
+    created_at: "2026-05-24T09:55:00Z",
   },
 ];
 

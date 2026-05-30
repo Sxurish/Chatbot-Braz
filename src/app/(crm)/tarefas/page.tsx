@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getUserName, mockTasks } from "@/lib/mock-data";
+import { getUserName } from "@/lib/mock-data";
+import { listTasks } from "@/lib/data/crm";
 import { formatDateTime } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/lib/types";
 
@@ -23,7 +24,8 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   atrasada: "Atrasada",
 };
 
-export default function TasksPage() {
+export default async function TasksPage() {
+  const tasks = await listTasks();
   return (
     <>
       <PageHeader
@@ -35,11 +37,11 @@ export default function TasksPage() {
           </Button>
         }
       />
-      {mockTasks.length === 0 ? (
+      {tasks.length === 0 ? (
         <EmptyState title="Nenhuma tarefa pendente" />
       ) : (
         <div className="space-y-3">
-          {mockTasks.map((task) => (
+          {tasks.map((task) => (
             <Card key={task.id} className="flex items-center justify-between p-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

@@ -4,10 +4,12 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { getUserName, mockFollowUps } from "@/lib/mock-data";
+import { getUserName } from "@/lib/mock-data";
+import { listFollowUps } from "@/lib/data/crm";
 import { formatDateTime } from "@/lib/utils";
 
-export default function FollowUpPage() {
+export default async function FollowUpPage() {
+  const followUps = await listFollowUps();
   return (
     <>
       <PageHeader
@@ -19,11 +21,11 @@ export default function FollowUpPage() {
           </Button>
         }
       />
-      {mockFollowUps.length === 0 ? (
+      {followUps.length === 0 ? (
         <EmptyState title="Nenhum follow-up pendente" />
       ) : (
         <div className="space-y-3">
-          {mockFollowUps.map((fu) => (
+          {followUps.map((fu) => (
             <Card key={fu.id} className="flex items-center justify-between p-4">
               <div>
                 <p className="font-medium text-slate-900">{fu.title}</p>

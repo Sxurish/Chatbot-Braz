@@ -9,7 +9,6 @@ import {
   FileText,
   CalendarPlus,
   UserCheck,
-  Download,
   ListPlus,
   Repeat,
   AlertTriangle,
@@ -25,8 +24,10 @@ import {
   LegalStatusBadge,
   UrgencyBadge,
 } from "@/components/crm/status-badge";
-import { getUserName, mockDocuments, mockTimeline } from "@/lib/mock-data";
+import { DocumentUpload } from "@/components/crm/document-upload";
+import { getUserName, mockTimeline } from "@/lib/mock-data";
 import { getLead } from "@/lib/data/leads";
+import { listDocumentsByLead } from "@/lib/data/crm";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 export default async function LeadDetailPage({
@@ -38,7 +39,7 @@ export default async function LeadDetailPage({
   if (!lead) notFound();
 
   const timeline = mockTimeline[lead.id] ?? [];
-  const documents = mockDocuments[lead.id] ?? [];
+  const documents = await listDocumentsByLead(lead.id);
 
   return (
     <>
@@ -108,9 +109,7 @@ export default async function LeadDetailPage({
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>Documentos vinculados</CardTitle>
-              <Button variant="ghost" size="sm">
-                <Download className="h-4 w-4" /> Enviar
-              </Button>
+              <DocumentUpload leadId={lead.id} />
             </CardHeader>
             <CardContent>
               {documents.length === 0 ? (

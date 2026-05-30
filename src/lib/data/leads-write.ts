@@ -1,7 +1,7 @@
 import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { hasServiceRole } from "@/lib/supabase/config";
-import type { AiResponse } from "@/lib/chatbot/schema";
+import type { AiResponse, ConversationSummary } from "@/lib/chatbot/schema";
 import type {
   CommercialStatus,
   FinancialStatus,
@@ -151,4 +151,52 @@ export async function persistLeadFromChat(
     leadId: lead.id,
     conversationId: conversation?.id,
   };
+}
+
+/**
+ * Registra o resumo interno final da conversa (Fase 4) como mensagem de sistema
+ * vinculada ao lead/conversa e cria uma notificação para a equipe.
+ */
+export async function finalizeConversation(input: {
+  leadId: string;
+  conversationId?: string;
+  summary: ConversationSummary;
+}): Promise<{ ok: boolean; reason?: string }> {
+  if (!hasServiceRole()) {
+    return { ok: false, reason: "supabase_not_configured" };
+  }
+
+  const supabase = createServiceClient();
+  const { leadId, conversationId, summary } = input;
+
+  if (conversationId) {
+    await supabase.from("messages").insert({
+      conversation_id: conversationId,
+      sender_type: "system",
+      content: "Resumo interno do atendimento gerado automaticamente.",
+      metadata: { summary },
+    });
+    await supabase
+      .from("conversations")
+      .update({ status: "encerrada" })
+      .eq("id", conversationId);
+  }
+
+  // Notificação interna para a equipe.
+  const urgent = summary.classificacao.urgencia === "alta";
+  await supabase.from("notifications").insert({
+    user_id: null,
+    type: urgent ? "lead_urgente" : "novo_lead",
+    title: urgent
+      ? "Lead urgente recebido pelo chatbot"
+      : "Novo lead recebido pelo chatbot",
+    body: `${summary.identificacao.nome || "Lead"} — ${
+      summary.classificacao.area_principal || "área não confirmada"
+    }.`,
+    entity_type: "lead",
+    entity_id: leadId,
+    read: false,
+  });
+
+  return { ok: true };
 }

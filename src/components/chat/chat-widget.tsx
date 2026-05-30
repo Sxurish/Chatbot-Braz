@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Send, ShieldCheck, AlertTriangle, FileText, Loader2, Scale } from "lucide-react";
+import {
+  Send,
+  ShieldCheck,
+  AlertTriangle,
+  FileText,
+  Loader2,
+  Scale,
+  CheckCircle2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { STANDARD_MESSAGES } from "@/lib/chatbot/system-prompt";
@@ -38,6 +46,10 @@ export function ChatWidget() {
   const [loading, setLoading] = useState(false);
   const [consentAt, setConsentAt] = useState<string | null>(null);
   const [leadCreated, setLeadCreated] = useState(false);
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [lastAi, setLastAi] = useState<AiResponse | null>(null);
+  const [finished, setFinished] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -95,8 +107,16 @@ export function ChatWidget() {
         }),
       });
       if (!res.ok) throw new Error("request failed");
-      const data: AiResponse & { _leadId?: string } = await res.json();
-      if (data._leadId) setLeadCreated(true);
+      const data: AiResponse & {
+        _leadId?: string;
+        _conversationId?: string;
+      } = await res.json();
+      if (data._leadId) {
+        setLeadCreated(true);
+        setLeadId(data._leadId);
+      }
+      if (data._conversationId) setConversationId(data._conversationId);
+      setLastAi(data);
       push({
         role: "bot",
         content: data.resposta_cliente,
@@ -115,6 +135,31 @@ export function ChatWidget() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleFinish() {
+    if (loading || finished) return;
+    setLoading(true);
+    // Gera o resumo interno final e encerra a conversa (se persistida).
+    if (leadId && lastAi && consentAt) {
+      try {
+        await fetch("/api/chat/finalize", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            leadId,
+            conversationId: conversationId ?? undefined,
+            ai: lastAi,
+            consent: { given: true, at: consentAt, policyVersion: POLICY_VERSION },
+          }),
+        });
+      } catch {
+        // Falha silenciosa: o encerramento ao cliente não deve ser bloqueado.
+      }
+    }
+    push({ role: "bot", content: STANDARD_MESSAGES.closing });
+    setFinished(true);
+    setLoading(false);
   }
 
   return (
@@ -153,11 +198,19 @@ export function ChatWidget() {
             </Button>
           </div>
         )}
+
+        {phase === "chatting" && lastAi && !finished && !loading && (
+          <div className="flex justify-center pt-1">
+            <Button size="sm" variant="outline" onClick={handleFinish}>
+              <CheckCircle2 className="h-4 w-4" /> Encerrar e enviar para a equipe
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Input */}
       <div className="border-t border-slate-200 bg-white p-3">
-        {phase === "declined" ? (
+        {phase === "declined" || finished ? (
           <p className="px-2 py-2 text-center text-xs text-slate-400">
             Atendimento encerrado. Entre em contato pelos canais oficiais do escritório.
           </p>

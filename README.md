@@ -10,7 +10,26 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ---
 
-## ✨ O que já está implementado (Fases 1 e 2 + base das Fases 3 e 4)
+## ✨ O que já está implementado (Fases 1, 2, 4 e 5)
+
+### 🤖 Fase 4 — Resumo final e enriquecimento da IA
+
+- **Resumo interno final** da conversa (`buildConversationSummary`) no formato
+  estruturado da seção 44, gerado ao encerrar o atendimento.
+- Rota `/api/chat/finalize` que persiste o resumo (mensagem de sistema na
+  conversa), encerra a conversa e **cria notificação interna** para a equipe.
+- Botão **“Encerrar e enviar para a equipe”** no chatbot.
+
+### 📎 Fase 5 — Documentos, notificações e operação
+
+- **Upload de documentos** com Supabase Storage (bucket **privado**), via Server
+  Action com validação de **tipo e tamanho (10 MB)** e categorização
+  (`src/lib/data/documents.ts` + `components/crm/document-upload.tsx`).
+- **Notificações internas** (`/notificacoes`) com contador de não lidas na
+  topbar e ícones por tipo (novo lead, urgente, documento, prazos, etc.).
+- Módulos de **tarefas, agenda e follow-up** agora consomem a camada de dados
+  (Supabase ou mocks), assim como os **documentos** do lead.
+- SQL de storage com políticas RLS (`supabase/storage.sql`).
 
 ### 🔐 Fase 2 — Autenticação e dados reais (Supabase)
 
@@ -87,7 +106,8 @@ src/
     └── supabase/      # client, server, middleware, config
 supabase/
 ├── schema.sql                                   # schema completo + RLS
-└── auth.sql                                     # trigger de provisionamento
+├── auth.sql                                     # trigger de provisionamento
+└── storage.sql                                  # bucket privado de documentos
 ```
 
 ---
@@ -133,7 +153,8 @@ NEXT_PUBLIC_PRIVACY_POLICY_VERSION=1.0.0
 ## 🗄️ Banco de dados e autenticação (Supabase)
 
 1. Crie um projeto no Supabase.
-2. No **SQL Editor**, execute `supabase/schema.sql` e depois `supabase/auth.sql`.
+2. No **SQL Editor**, execute, nesta ordem: `supabase/schema.sql`,
+   `supabase/auth.sql` e `supabase/storage.sql`.
 3. Copie URL e chaves (anon + service role) para o `.env.local`.
 4. Em **Authentication → Users**, crie o usuário da equipe (e-mail/senha).
 5. Promova-o a admin:
@@ -157,8 +178,9 @@ protegidas e o chatbot grava leads/consentimentos reais.
 
 - **Fase 2 — Supabase:** ✅ autenticação, RLS, middleware, queries reais e
   persistência do chatbot.
-- **Fase 4 — IA:** resumo final da conversa e enriquecimento da classificação.
-- **Fase 5 — Documentos/Agenda/Tarefas:** upload com Storage e notificações.
+- **Fase 4 — IA:** ✅ resumo final da conversa e notificação interna.
+- **Fase 5 — Documentos/Agenda/Tarefas:** ✅ upload com Storage privado,
+  notificações internas e listagens consumindo a camada de dados.
 - **Fase 6 — Expansões:** contratos, gestão processual, financeiro, follow-up
   avançado, produtos digitais, automação documental, n8n e WhatsApp API.
 

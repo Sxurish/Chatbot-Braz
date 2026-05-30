@@ -74,7 +74,11 @@ export async function POST(req: Request) {
         fullMessage: message,
       });
       if (result.persisted) {
-        return NextResponse.json({ ...ai, _leadId: result.leadId });
+        return NextResponse.json({
+          ...ai,
+          _leadId: result.leadId,
+          _conversationId: result.conversationId,
+        });
       }
     } catch (err) {
       console.error("[chat] persist error:", err);

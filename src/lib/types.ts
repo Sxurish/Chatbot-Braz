@@ -207,3 +207,29 @@ export interface TeamUser {
   last_login: string | null;
   created_at: string;
 }
+
+export type NotificationType =
+  | "novo_lead"
+  | "lead_urgente"
+  | "documento_enviado"
+  | "consulta_agendada"
+  | "tarefa_vencendo"
+  | "tarefa_atrasada"
+  | "lead_aguardando"
+  | "follow_up_pendente"
+  | "contrato_enviado"
+  | "contrato_assinado"
+  | "pagamento_atraso";
+
+export interface AppNotification {
+  id: string;
+  user_id: string | null;
+  type: NotificationType;
+  title: string;
+  body: string | null;
+  read: boolean;
+  entity_type: string | null;
+  entity_id: string | null;
+  created_at: string;
+}
+

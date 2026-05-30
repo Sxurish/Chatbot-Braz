@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Bell, Search, LogOut, ChevronDown } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
@@ -19,9 +20,10 @@ const ROLE_LABEL: Record<UserRole, string> = {
 interface TopbarProps {
   title?: string;
   user: { name: string; role: UserRole };
+  unreadCount?: number;
 }
 
-export function Topbar({ title, user }: TopbarProps) {
+export function Topbar({ title, user, unreadCount = 0 }: TopbarProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -40,13 +42,18 @@ export function Topbar({ title, user }: TopbarProps) {
             className="w-64 pl-9"
           />
         </div>
-        <button
+        <Link
+          href="/notificacoes"
           className="relative flex h-10 w-10 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
           aria-label="Notificações"
         >
           <Bell className="h-5 w-5" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-        </button>
+          {unreadCount > 0 && (
+            <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold text-white">
+              {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
+          )}
+        </Link>
 
         <div className="relative">
           <button
