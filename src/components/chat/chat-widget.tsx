@@ -36,6 +36,8 @@ export function ChatWidget() {
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [consentAt, setConsentAt] = useState<string | null>(null);
+  const [leadCreated, setLeadCreated] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -54,7 +56,8 @@ export function ChatWidget() {
       return;
     }
     push({ role: "user", content: "Sim, concordo" });
-    // Em produção, registrar consentimento no Supabase (consent_logs) aqui.
+    // Carimbo do consentimento — enviado ao server para registro em consent_logs.
+    setConsentAt(new Date().toISOString());
     push({
       role: "bot",
       content:
@@ -81,10 +84,19 @@ export function ChatWidget() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: text, history }),
+        body: JSON.stringify({
+          message: text,
+          history,
+          consent: consentAt
+            ? { given: true, at: consentAt, policyVersion: POLICY_VERSION }
+            : undefined,
+          // Persiste apenas a primeira mensagem de triagem como lead inicial.
+          persist: !leadCreated,
+        }),
       });
       if (!res.ok) throw new Error("request failed");
-      const data: AiResponse = await res.json();
+      const data: AiResponse & { _leadId?: string } = await res.json();
+      if (data._leadId) setLeadCreated(true);
       push({
         role: "bot",
         content: data.resposta_cliente,

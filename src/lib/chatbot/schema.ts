@@ -112,6 +112,16 @@ export const chatRequestSchema = z.object({
       collected: z.record(z.unknown()).optional(),
     })
     .optional(),
+  // Consentimento LGPD coletado no client antes da troca de mensagens.
+  consent: z
+    .object({
+      given: z.boolean(),
+      at: z.string(),
+      policyVersion: z.string(),
+    })
+    .optional(),
+  // Quando true, persiste o lead/conversa ao final da triagem (se configurado).
+  persist: z.boolean().default(false),
 });
 
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

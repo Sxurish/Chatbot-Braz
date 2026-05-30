@@ -8,6 +8,7 @@ import {
 } from "@/lib/chatbot/flow";
 import { aiResponseSchema, chatRequestSchema, type AiResponse } from "@/lib/chatbot/schema";
 import { STANDARD_MESSAGES, SYSTEM_PROMPT } from "@/lib/chatbot/system-prompt";
+import { persistLeadFromChat } from "@/lib/data/leads-write";
 
 export const runtime = "nodejs";
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { message, history, context } = parsed.data;
+  const { message, history, context, consent, persist } = parsed.data;
 
   // Camada de segurança comportamental — bloqueia pedidos ilícitos.
   if (detectIllegalRequest(message)) {
@@ -42,17 +43,45 @@ export async function POST(req: Request) {
 
   const provider = process.env.AI_PROVIDER ?? "mock";
 
+  let ai: AiResponse | null = null;
   try {
     if (provider !== "mock") {
-      const ai = await callProvider(provider, message, history, context);
-      if (ai) return NextResponse.json(ai);
+      ai = await callProvider(provider, message, history, context);
     }
   } catch (err) {
     // Em caso de falha do provedor, cai no fallback heurístico (mock).
     console.error("[chat] provider error:", err);
   }
 
-  return NextResponse.json(buildHeuristicResponse(message));
+  if (!ai) ai = buildHeuristicResponse(message);
+
+  // Persistência opcional do lead/conversa (apenas com consentimento + Supabase).
+  if (persist && consent?.given) {
+    try {
+      const userAgent = req.headers.get("user-agent");
+      const ip =
+        req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
+      const result = await persistLeadFromChat({
+        ai,
+        consent: {
+          given: consent.given,
+          at: consent.at,
+          policyVersion: consent.policyVersion,
+          channel: "chatbot",
+          ip,
+          userAgent,
+        },
+        fullMessage: message,
+      });
+      if (result.persisted) {
+        return NextResponse.json({ ...ai, _leadId: result.leadId });
+      }
+    } catch (err) {
+      console.error("[chat] persist error:", err);
+    }
+  }
+
+  return NextResponse.json(ai);
 }
 
 /** Resposta heurística (sem IA externa) — fallback seguro e determinístico. */

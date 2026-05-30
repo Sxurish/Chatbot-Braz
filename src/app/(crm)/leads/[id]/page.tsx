@@ -25,16 +25,16 @@ import {
   LegalStatusBadge,
   UrgencyBadge,
 } from "@/components/crm/status-badge";
-import {
-  getLeadById,
-  getUserName,
-  mockDocuments,
-  mockTimeline,
-} from "@/lib/mock-data";
+import { getUserName, mockDocuments, mockTimeline } from "@/lib/mock-data";
+import { getLead } from "@/lib/data/leads";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
-export default function LeadDetailPage({ params }: { params: { id: string } }) {
-  const lead = getLeadById(params.id);
+export default async function LeadDetailPage({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const lead = await getLead(params.id);
   if (!lead) notFound();
 
   const timeline = mockTimeline[lead.id] ?? [];

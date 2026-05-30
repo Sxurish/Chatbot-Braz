@@ -2,9 +2,10 @@ import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { LeadsTable } from "@/components/crm/leads-table";
 import { Button } from "@/components/ui/button";
-import { mockLeads } from "@/lib/mock-data";
+import { listLeads } from "@/lib/data/leads";
 
-export default function LeadsPage() {
+export default async function LeadsPage() {
+  const leads = await listLeads();
   return (
     <>
       <PageHeader
@@ -16,7 +17,7 @@ export default function LeadsPage() {
           </Button>
         }
       />
-      <LeadsTable leads={mockLeads} />
+      <LeadsTable leads={leads} />
     </>
   );
 }

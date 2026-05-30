@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar } from "@/components/ui/avatar";
-import { mockTeam } from "@/lib/mock-data";
+import { listTeam } from "@/lib/data/leads";
 import { formatDateTime, getInitials } from "@/lib/utils";
 import type { UserRole } from "@/lib/types";
 
@@ -16,7 +16,8 @@ const ROLE_LABEL: Record<UserRole, string> = {
   visualizador: "Visualizador",
 };
 
-export default function TeamPage() {
+export default async function TeamPage() {
+  const team = await listTeam();
   return (
     <>
       <PageHeader
@@ -29,7 +30,7 @@ export default function TeamPage() {
         }
       />
       <Card className="divide-y divide-slate-100">
-        {mockTeam.map((user) => (
+        {team.map((user) => (
           <div key={user.id} className="flex items-center justify-between p-4">
             <div className="flex items-center gap-3">
               <Avatar fallback={getInitials(user.name)} />

@@ -24,9 +24,11 @@ import {
   getLeadsByUrgency,
   getWeeklyEvolution,
 } from "@/lib/metrics";
+import { listLeads } from "@/lib/data/leads";
 
-export default function DashboardPage() {
-  const m = getDashboardMetrics();
+export default async function DashboardPage() {
+  const leads = await listLeads();
+  const m = getDashboardMetrics(leads);
 
   return (
     <>
@@ -70,7 +72,7 @@ export default function DashboardPage() {
             <CardTitle>Leads por área jurídica</CardTitle>
           </CardHeader>
           <CardContent>
-            <LeadsByAreaChart data={getLeadsByArea()} />
+            <LeadsByAreaChart data={getLeadsByArea(leads)} />
           </CardContent>
         </Card>
         <Card>
@@ -78,7 +80,7 @@ export default function DashboardPage() {
             <CardTitle>Origem dos leads</CardTitle>
           </CardHeader>
           <CardContent>
-            <LeadsBySourceChart data={getLeadsBySource()} />
+            <LeadsBySourceChart data={getLeadsBySource(leads)} />
           </CardContent>
         </Card>
         <Card>
@@ -86,7 +88,7 @@ export default function DashboardPage() {
             <CardTitle>Atendimentos por urgência</CardTitle>
           </CardHeader>
           <CardContent>
-            <UrgencyChart data={getLeadsByUrgency()} />
+            <UrgencyChart data={getLeadsByUrgency(leads)} />
           </CardContent>
         </Card>
         <Card>
