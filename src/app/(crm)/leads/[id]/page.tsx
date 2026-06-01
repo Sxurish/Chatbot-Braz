@@ -7,10 +7,6 @@ import {
   MapPin,
   Clock,
   FileText,
-  CalendarPlus,
-  UserCheck,
-  ListPlus,
-  Repeat,
   AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
@@ -25,6 +21,7 @@ import {
   UrgencyBadge,
 } from "@/components/crm/status-badge";
 import { DocumentUpload } from "@/components/crm/document-upload";
+import { LeadActions, LeadHeaderActions } from "@/components/crm/lead-actions";
 import { getUserName, mockTimeline } from "@/lib/mock-data";
 import { getLead } from "@/lib/data/leads";
 import { listDocumentsByLead } from "@/lib/data/crm";
@@ -55,12 +52,7 @@ export default async function LeadDetailPage({
         description={lead.case_type ?? "Atendimento jurídico"}
         action={
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" size="sm">
-              <CalendarPlus className="h-4 w-4" /> Agendar
-            </Button>
-            <Button variant="outline" size="sm">
-              <UserCheck className="h-4 w-4" /> Tornar cliente
-            </Button>
+            <LeadHeaderActions leadId={lead.id} />
             <Button variant="gold" size="sm">
               <FileText className="h-4 w-4" /> Exportar resumo
             </Button>
@@ -262,16 +254,8 @@ export default async function LeadDetailPage({
             <CardHeader>
               <CardTitle>Ações rápidas</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-2">
-              <Button variant="outline" size="sm" className="justify-start">
-                <ListPlus className="h-4 w-4" /> Criar tarefa
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <Repeat className="h-4 w-4" /> Criar follow-up
-              </Button>
-              <Button variant="outline" size="sm" className="justify-start">
-                <FileText className="h-4 w-4" /> Criar caso
-              </Button>
+            <CardContent>
+              <LeadActions leadId={lead.id} />
             </CardContent>
           </Card>
         </div>

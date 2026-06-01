@@ -1,10 +1,9 @@
-import { Plus } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QuickCreate } from "@/components/crm/quick-create";
 import { getUserName } from "@/lib/mock-data";
 import { listTasks } from "@/lib/data/crm";
 import { formatDateTime } from "@/lib/utils";
@@ -31,11 +30,7 @@ export default async function TasksPage() {
       <PageHeader
         title="Tarefas"
         description="Ações internas vinculadas a leads, clientes, casos e processos."
-        action={
-          <Button>
-            <Plus className="h-4 w-4" /> Nova tarefa
-          </Button>
-        }
+        action={<QuickCreate kind="task" buttonLabel="Nova tarefa" />}
       />
       {tasks.length === 0 ? (
         <EmptyState title="Nenhuma tarefa pendente" />

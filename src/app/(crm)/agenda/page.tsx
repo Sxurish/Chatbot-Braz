@@ -1,9 +1,9 @@
-import { CalendarPlus, Video, MapPin, Phone } from "lucide-react";
+import { Video, MapPin, Phone } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QuickCreate } from "@/components/crm/quick-create";
 import { getUserName } from "@/lib/mock-data";
 import { listAppointments } from "@/lib/data/crm";
 import { formatDate } from "@/lib/utils";
@@ -21,11 +21,7 @@ export default async function AgendaPage() {
       <PageHeader
         title="Agenda"
         description="Consultas e reuniões da equipe. Preparado para integração futura com Google Calendar."
-        action={
-          <Button>
-            <CalendarPlus className="h-4 w-4" /> Novo agendamento
-          </Button>
-        }
+        action={<QuickCreate kind="appointment" buttonLabel="Novo agendamento" />}
       />
       {appointments.length === 0 ? (
         <EmptyState title="Nenhum agendamento" />

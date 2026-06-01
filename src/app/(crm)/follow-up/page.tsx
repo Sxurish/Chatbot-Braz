@@ -1,9 +1,8 @@
-import { Plus } from "lucide-react";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { QuickCreate } from "@/components/crm/quick-create";
 import { getUserName } from "@/lib/mock-data";
 import { listFollowUps } from "@/lib/data/crm";
 import { formatDateTime } from "@/lib/utils";
@@ -15,11 +14,7 @@ export default async function FollowUpPage() {
       <PageHeader
         title="Follow-up"
         description="Contatos programados para retorno a leads e clientes."
-        action={
-          <Button>
-            <Plus className="h-4 w-4" /> Novo follow-up
-          </Button>
-        }
+        action={<QuickCreate kind="followup" buttonLabel="Novo follow-up" />}
       />
       {followUps.length === 0 ? (
         <EmptyState title="Nenhum follow-up pendente" />
