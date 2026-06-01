@@ -269,6 +269,22 @@ create table if not exists public.follow_ups (
 );
 
 -- ----------------------------------------------------------------------------
+-- payments (financeiro)
+-- ----------------------------------------------------------------------------
+create table if not exists public.payments (
+  id uuid primary key default uuid_generate_v4(),
+  contract_id uuid references public.contracts(id) on delete set null,
+  client_id uuid references public.clients(id) on delete set null,
+  description text,
+  amount numeric(12,2) not null default 0,
+  due_date timestamptz,
+  paid_at timestamptz,
+  status text not null default 'pendente',
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_payments_status on public.payments(status);
+
+-- ----------------------------------------------------------------------------
 -- consent_logs (LGPD)
 -- ----------------------------------------------------------------------------
 create table if not exists public.consent_logs (
@@ -378,6 +394,7 @@ alter table public.documents enable row level security;
 alter table public.appointments enable row level security;
 alter table public.tasks enable row level security;
 alter table public.follow_ups enable row level security;
+alter table public.payments enable row level security;
 alter table public.consent_logs enable row level security;
 alter table public.knowledge_base enable row level security;
 alter table public.notifications enable row level security;
@@ -400,7 +417,7 @@ declare t text;
 begin
   foreach t in array array[
     'leads','clients','cases','processes','contracts','conversations','messages',
-    'documents','appointments','tasks','follow_ups','consent_logs',
+    'documents','appointments','tasks','follow_ups','payments','consent_logs',
     'knowledge_base','notifications','audit_logs','settings'
   ]
   loop

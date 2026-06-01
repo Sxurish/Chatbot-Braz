@@ -10,7 +10,18 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ---
 
-## ✨ O que já está implementado (Fases 1, 2, 4 e 5)
+## ✨ O que já está implementado (Fases 1, 2, 4, 5 e 6)
+
+### 💼 Fase 6 — Clientes, casos, processos, contratos e financeiro
+
+- **Clientes** (`/clientes`): listagem com status e dados de contratação.
+- **Casos** (`/casos`): demandas jurídicas com área, status e responsável.
+- **Processos** (`/processos`): número, vara/comarca, classe e próximo prazo.
+- **Contratos** (`/contratos`): tabela com valor, condições, status e total
+  assinado.
+- **Financeiro** (`/financeiro`): cards de recebido, a receber, em atraso e
+  receita prevista, com a relação de pagamentos.
+- Camada de dados `fase6.ts` (Supabase ou mocks) + tabela `payments` no schema.
 
 ### 🤖 Fase 4 — Resumo final e enriquecimento da IA
 
@@ -181,8 +192,11 @@ protegidas e o chatbot grava leads/consentimentos reais.
 - **Fase 4 — IA:** ✅ resumo final da conversa e notificação interna.
 - **Fase 5 — Documentos/Agenda/Tarefas:** ✅ upload com Storage privado,
   notificações internas e listagens consumindo a camada de dados.
-- **Fase 6 — Expansões:** contratos, gestão processual, financeiro, follow-up
-  avançado, produtos digitais, automação documental, n8n e WhatsApp API.
+- **Fase 6 — Gestão jurídica e financeira:** ✅ clientes, casos, processos,
+  contratos e financeiro (com dados reais do Supabase ou mocks).
+- **Próximas expansões:** ações de escrita no CRM (criar tarefa/caso/contrato,
+  converter lead em cliente), produtos digitais, automação documental, n8n e
+  WhatsApp API.
 
 ---
 

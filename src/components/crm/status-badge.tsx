@@ -1,17 +1,21 @@
 import { Badge } from "@/components/ui/badge";
 import {
   COMMERCIAL_STATUS_LABELS,
+  CONTRACT_STATUS_LABELS,
   FINANCIAL_STATUS_LABELS,
   LEGAL_AREA_LABELS,
   LEGAL_STATUS_LABELS,
+  PAYMENT_STATUS_LABELS,
   URGENCY_COLORS,
   URGENCY_LABELS,
 } from "@/lib/constants";
 import type {
   CommercialStatus,
+  ContractStatus,
   FinancialStatus,
   LegalArea,
   LegalStatus,
+  PaymentStatus,
   Urgency,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -77,4 +81,26 @@ export function AreaBadge({ area }: { area: LegalArea }) {
       {LEGAL_AREA_LABELS[area]}
     </Badge>
   );
+}
+
+const CONTRACT_TONE: Record<ContractStatus, string> = {
+  rascunho: "bg-slate-100 text-slate-600 border-slate-200",
+  enviado: "bg-indigo-50 text-indigo-700 border-indigo-200",
+  assinado: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  cancelado: "bg-slate-100 text-slate-500 border-slate-200",
+};
+
+export function ContractStatusBadge({ status }: { status: ContractStatus }) {
+  return <Badge className={CONTRACT_TONE[status]}>{CONTRACT_STATUS_LABELS[status]}</Badge>;
+}
+
+const PAYMENT_TONE: Record<PaymentStatus, string> = {
+  pendente: "bg-amber-100 text-amber-700 border-amber-200",
+  pago: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  atrasado: "bg-red-100 text-red-700 border-red-200",
+  cancelado: "bg-slate-100 text-slate-500 border-slate-200",
+};
+
+export function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
+  return <Badge className={PAYMENT_TONE[status]}>{PAYMENT_STATUS_LABELS[status]}</Badge>;
 }

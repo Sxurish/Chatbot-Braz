@@ -1,8 +1,10 @@
 import type {
   CommercialStatus,
+  ContractStatus,
   FinancialStatus,
   LegalArea,
   LegalStatus,
+  PaymentStatus,
   Urgency,
 } from "./types";
 
@@ -86,6 +88,20 @@ export const FINANCIAL_STATUS_LABELS: Record<FinancialStatus, string> = {
   em_atraso: "Em atraso",
   quitado: "Quitado",
   cobranca_necessaria: "Cobrança necessária",
+};
+
+export const CONTRACT_STATUS_LABELS: Record<ContractStatus, string> = {
+  rascunho: "Rascunho",
+  enviado: "Enviado",
+  assinado: "Assinado",
+  cancelado: "Cancelado",
+};
+
+export const PAYMENT_STATUS_LABELS: Record<PaymentStatus, string> = {
+  pendente: "Pendente",
+  pago: "Pago",
+  atrasado: "Atrasado",
+  cancelado: "Cancelado",
 };
 
 /** Paleta institucional. */

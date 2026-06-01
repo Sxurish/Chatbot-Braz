@@ -233,3 +233,84 @@ export interface AppNotification {
   created_at: string;
 }
 
+// ---------------------------------------------------------------------------
+// Fase 6 — Clientes, Casos, Processos, Contratos e Financeiro
+// ---------------------------------------------------------------------------
+
+export interface Client {
+  id: string;
+  lead_id: string | null;
+  full_name: string;
+  phone: string | null;
+  email: string | null;
+  cpf_cnpj: string | null;
+  city: string | null;
+  state: string | null;
+  status: "ativo" | "inativo";
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Case {
+  id: string;
+  lead_id: string | null;
+  client_id: string | null;
+  title: string;
+  legal_area: LegalArea;
+  subarea: string | null;
+  summary: string | null;
+  status: LegalStatus;
+  assigned_to: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Process {
+  id: string;
+  case_id: string | null;
+  process_number: string | null;
+  court: string | null;
+  jurisdiction: string | null;
+  class: string | null;
+  subject: string | null;
+  status: LegalStatus;
+  next_deadline: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ContractStatus =
+  | "rascunho"
+  | "enviado"
+  | "assinado"
+  | "cancelado";
+
+export interface Contract {
+  id: string;
+  lead_id: string | null;
+  client_id: string | null;
+  case_id: string | null;
+  contract_type: string | null;
+  status: ContractStatus;
+  value: number | null;
+  payment_terms: string | null;
+  signed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PaymentStatus = "pendente" | "pago" | "atrasado" | "cancelado";
+
+export interface Payment {
+  id: string;
+  contract_id: string | null;
+  client_id: string | null;
+  description: string | null;
+  amount: number;
+  due_date: string | null;
+  paid_at: string | null;
+  status: PaymentStatus;
+  created_at: string;
+}
+
+
