@@ -13,11 +13,12 @@ Passo a passo para ligar o app ao Supabase. Sem isso, o sistema roda em
 
 No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 
-1. `supabase/schema.sql`  — ENUMs, tabelas, triggers e RLS.
-2. `supabase/auth.sql`    — provisionamento automático de perfil de usuário.
-3. `supabase/storage.sql` — bucket privado `documents` + políticas.
+1. `supabase/schema.sql`   — ENUMs, tabelas, triggers e RLS.
+2. `supabase/auth.sql`     — provisionamento automático de perfil de usuário.
+3. `supabase/storage.sql`  — bucket privado `documents` + políticas.
+4. `supabase/channels.sql` — colunas de canal (WhatsApp/Instagram) + dedup.
 
-> Dica: dá para rodar os três de uma vez colando um após o outro.
+> Dica: dá para rodar todos de uma vez colando um após o outro.
 
 ## 3. Criar o primeiro usuário (equipe)
 
