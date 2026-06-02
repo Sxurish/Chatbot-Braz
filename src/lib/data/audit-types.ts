@@ -43,6 +43,10 @@ export const ACTION_LABELS: Record<
   create_payment: { label: "Criou pagamento", tone: "create" },
   update_payment: { label: "Atualizou pagamento", tone: "update" },
   delete_payment: { label: "Excluiu pagamento", tone: "delete" },
+  create_template: { label: "Adicionou template", tone: "create" },
+  update_template: { label: "Atualizou template", tone: "update" },
+  delete_template: { label: "Excluiu template", tone: "delete" },
+  generate_doc: { label: "Gerou documento", tone: "create" },
 };
 
 export function actionMeta(action: string) {
@@ -120,6 +124,10 @@ export const ENTITY_INFO: Record<string, EntityInfo> = {
   payment: {
     label: "Pagamento",
     href: () => "/financeiro",
+  },
+  template: {
+    label: "Template de documento",
+    href: () => "/templates",
   },
 };
 

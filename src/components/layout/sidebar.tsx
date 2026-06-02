@@ -68,6 +68,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/metricas", label: "Métricas", icon: BarChart3 },
       { href: "/base-conhecimento", label: "Base de conhecimento", icon: BookOpen },
+      { href: "/templates", label: "Templates de documentos", icon: FileSignature },
       { href: "/equipe", label: "Usuários / Equipe", icon: ShieldCheck },
       { href: "/lgpd", label: "Políticas e consentimentos", icon: ScrollText },
       { href: "/auditoria", label: "Logs de auditoria", icon: ScrollText },

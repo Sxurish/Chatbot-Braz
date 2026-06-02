@@ -22,9 +22,11 @@ import {
 } from "@/components/crm/status-badge";
 import { DocumentUpload } from "@/components/crm/document-upload";
 import { LeadActions, LeadHeaderActions } from "@/components/crm/lead-actions";
+import { GenerateDocumentButton } from "@/components/crm/generate-document-button";
 import { getUserName, mockTimeline } from "@/lib/mock-data";
 import { getLead } from "@/lib/data/leads";
 import { listDocumentsByLead } from "@/lib/data/crm";
+import { listTemplates } from "@/lib/data/templates-read";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
 export default async function LeadDetailPage({
@@ -36,7 +38,10 @@ export default async function LeadDetailPage({
   if (!lead) notFound();
 
   const timeline = mockTimeline[lead.id] ?? [];
-  const documents = await listDocumentsByLead(lead.id);
+  const [documents, templates] = await Promise.all([
+    listDocumentsByLead(lead.id),
+    listTemplates(true),
+  ]);
 
   return (
     <>
@@ -53,6 +58,7 @@ export default async function LeadDetailPage({
         action={
           <div className="flex flex-wrap gap-2">
             <LeadHeaderActions leadId={lead.id} />
+            <GenerateDocumentButton leadId={lead.id} templates={templates} />
             <Button variant="gold" size="sm">
               <FileText className="h-4 w-4" /> Exportar resumo
             </Button>
