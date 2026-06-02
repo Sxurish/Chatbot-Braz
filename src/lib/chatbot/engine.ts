@@ -7,7 +7,8 @@ import {
   SUGGESTED_DOCS,
 } from "@/lib/chatbot/flow";
 import { aiResponseSchema, type AiResponse } from "@/lib/chatbot/schema";
-import { STANDARD_MESSAGES, SYSTEM_PROMPT } from "@/lib/chatbot/system-prompt";
+import { STANDARD_MESSAGES, buildSystemPrompt } from "@/lib/chatbot/system-prompt";
+import { getActiveKnowledgeForPrompt } from "@/lib/data/knowledge";
 
 /**
  * Motor de triagem reutilizável (channel-agnostic).
@@ -101,6 +102,16 @@ async function callProvider(
     context ?? {}
   )}\n\nMensagem do usuário: ${message}`;
 
+  // Resolve o system-prompt incluindo a base de conhecimento ativa (se houver).
+  // Falha silenciosa cai no SYSTEM_PROMPT padrão para não derrubar o atendimento.
+  let knowledgeBlock = "";
+  try {
+    knowledgeBlock = await getActiveKnowledgeForPrompt();
+  } catch (err) {
+    console.error("[engine] knowledge fetch error:", err);
+  }
+  const systemPrompt = buildSystemPrompt(knowledgeBlock);
+
   let raw: string | null = null;
 
   if (provider === "anthropic") {
@@ -116,7 +127,7 @@ async function callProvider(
       body: JSON.stringify({
         model: process.env.AI_MODEL || "claude-haiku-4-5-20251001",
         max_tokens: 1024,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: [
           ...history.map((h) => ({ role: h.role, content: h.content })),
           { role: "user", content: userContent },
@@ -138,7 +149,7 @@ async function callProvider(
         model: process.env.AI_MODEL || "gpt-4o-mini",
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           ...history,
           { role: "user", content: userContent },
         ],

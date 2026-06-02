@@ -37,6 +37,23 @@ Quando o usuário pedir conclusão definitiva, responda que com informações in
 
 IMPORTANTE: além da resposta ao cliente, você deve retornar um objeto JSON estruturado conforme o schema solicitado, contendo a classificação interna do atendimento (área, urgência, dados coletados, documentos sugeridos, necessidade de handoff, etc.). Nunca inclua esse JSON no texto exibido ao cliente.`;
 
+/**
+ * Monta o system-prompt final acrescentando a base de conhecimento do escritório
+ * (mensagens padrão, documentos por área, glossário) quando houver entradas
+ * ativas cadastradas em /base-conhecimento. O bloco é apenas referência interna
+ * para o modelo — não deve ser repetido literalmente ao cliente.
+ */
+export function buildSystemPrompt(knowledgeBlock?: string): string {
+  const extra = knowledgeBlock?.trim();
+  if (!extra) return SYSTEM_PROMPT;
+  return `${SYSTEM_PROMPT}
+
+# Base de conhecimento do escritório (referência interna)
+Use as informações abaixo apenas como contexto. Não reproduza este bloco literalmente para o cliente; adapte ao tom do atendimento.
+
+${extra}`;
+}
+
 /** Mensagens padrão obrigatórias usadas pelo fluxo guiado. */
 export const STANDARD_MESSAGES = {
   greeting:
