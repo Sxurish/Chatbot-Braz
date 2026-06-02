@@ -31,6 +31,18 @@ export const ACTION_LABELS: Record<
   update_ai: { label: "Atualizou IA", tone: "update" },
   create_dsr: { label: "Registrou solicitação LGPD", tone: "create" },
   update_dsr: { label: "Atualizou solicitação LGPD", tone: "update" },
+  download_doc: { label: "Baixou documento", tone: "update" },
+  update_doc_review: { label: "Atualizou revisão de documento", tone: "update" },
+  delete_doc: { label: "Excluiu documento", tone: "delete" },
+  create_process: { label: "Criou processo", tone: "create" },
+  update_process: { label: "Atualizou processo", tone: "update" },
+  delete_process: { label: "Excluiu processo", tone: "delete" },
+  create_contract: { label: "Criou contrato", tone: "create" },
+  update_contract: { label: "Atualizou contrato", tone: "update" },
+  delete_contract: { label: "Excluiu contrato", tone: "delete" },
+  create_payment: { label: "Criou pagamento", tone: "create" },
+  update_payment: { label: "Atualizou pagamento", tone: "update" },
+  delete_payment: { label: "Excluiu pagamento", tone: "delete" },
 };
 
 export function actionMeta(action: string) {
@@ -100,6 +112,14 @@ export const ENTITY_INFO: Record<string, EntityInfo> = {
   dsr_request: {
     label: "Solicitação LGPD",
     href: () => "/lgpd",
+  },
+  document: {
+    label: "Documento",
+    href: () => "/documentos",
+  },
+  payment: {
+    label: "Pagamento",
+    href: () => "/financeiro",
   },
 };
 

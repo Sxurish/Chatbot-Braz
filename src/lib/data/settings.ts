@@ -149,7 +149,7 @@ export function getIntegrationStatus(provider: AiProvider): IntegrationStatus {
         process.env.INSTAGRAM_ACCESS_TOKEN && process.env.INSTAGRAM_VERIFY_TOKEN
       ),
       webhook_url: `${appUrl}/api/webhooks/instagram`,
-      note: "Rota do webhook ainda não implementada — preparada para a próxima fase.",
+      note: "Configure as variáveis INSTAGRAM_* para ativar o atendimento via Instagram Messaging.",
     },
     ai: {
       provider,

@@ -93,12 +93,14 @@ export function IntegrationsStatus({ status }: { status: IntegrationStatus }) {
             </div>
             <StatusBadge
               ok={status.instagram.configured}
-              label={status.instagram.configured ? "Configurado" : "Preparado"}
+              label={status.instagram.configured ? "Configurado" : "Pendente"}
             />
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50/60 px-3 py-2">
             <Row label="URL do webhook" value={status.instagram.webhook_url} />
-            <p className="pt-1 text-xs text-amber-600">{status.instagram.note}</p>
+            {!status.instagram.configured && (
+              <p className="pt-1 text-xs text-amber-600">{status.instagram.note}</p>
+            )}
           </div>
         </div>
 
