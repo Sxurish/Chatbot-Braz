@@ -78,20 +78,36 @@ Envie uma mensagem para o número do WhatsApp Business. O fluxo:
 > Sem `SUPABASE_SERVICE_ROLE_KEY`, o webhook ainda responde (triagem), mas **não
 > persiste**. A gravação exige a service role no servidor.
 
-## Instagram (próxima fase)
+## Instagram (DMs)
 
-A Instagram Messaging API usa a **mesma Graph API**. A estrutura já está pronta:
-o `ingestMessage()` aceita `channel: "instagram"`. Falta apenas:
+A Instagram Messaging API usa a **mesma Graph API** — já está implementada com a
+mesma estrutura do WhatsApp.
 
-- `src/lib/channels/instagram.ts` (parse do payload de IG + `sendText` no
-  endpoint de mensagens do IG);
-- `src/app/api/webhooks/instagram/route.ts` (GET verify + POST).
+- Código: `src/lib/channels/instagram.ts` + `src/app/api/webhooks/instagram/route.ts`.
+- Pré-requisitos na Meta: conta do Instagram **profissional** vinculada a uma
+  Página do Facebook, e o produto **Instagram** adicionado ao app, com permissão
+  de mensagens (`instagram_manage_messages`).
 
-As variáveis `INSTAGRAM_*` já estão previstas no `.env.example`.
+### Variáveis de ambiente
+
+```env
+INSTAGRAM_VERIFY_TOKEN=um-valor-secreto-que-voce-escolhe
+INSTAGRAM_APP_SECRET=...        # App Secret da Meta
+INSTAGRAM_ACCESS_TOKEN=...      # token da Página/conta IG
+```
+
+### Webhook na Meta
+
+- **Callback URL**: `https://SEU-DOMINIO/api/webhooks/instagram`
+- **Verify Token**: o mesmo valor de `INSTAGRAM_VERIFY_TOKEN`
+- Assine o campo **messages** do produto Instagram.
+
+> O fluxo de triagem, consentimento, criação de lead e respostas é idêntico ao
+> do WhatsApp — muda apenas o formato do payload e o endpoint de envio.
 
 ## Segurança
 
-- Assinatura `X-Hub-Signature-256` validada com `WHATSAPP_APP_SECRET`.
+- Assinatura `X-Hub-Signature-256` validada com o App Secret (WhatsApp e IG).
 - Webhooks gravam via **service role** apenas no servidor.
 - Deduplicação evita processamento duplicado.
 - O webhook sempre responde `200` rapidamente para a Meta não reenviar em loop.

@@ -12,17 +12,19 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ## ✨ O que já está implementado (Fases 1, 2, 4, 5, 6 + canais)
 
-### 📲 Integração de canais — WhatsApp (Instagram preparado)
+### 📲 Integração de canais — WhatsApp e Instagram
 
-- **Webhook do WhatsApp** (`/api/webhooks/whatsapp`): verificação (GET),
-  validação de assinatura `X-Hub-Signature-256` e recebimento de mensagens.
+- **Webhooks** `/api/webhooks/whatsapp` e `/api/webhooks/instagram`:
+  verificação (GET), validação de assinatura `X-Hub-Signature-256` e
+  recebimento de mensagens.
 - **Motor de triagem reutilizável** (`src/lib/chatbot/engine.ts`) compartilhado
   entre o chat do site e os canais de mensageria.
 - **Camada de ingestão channel-agnostic** (`src/lib/channels/ingest.ts`):
   consentimento LGPD via texto (SIM/NÃO), estado da conversa por contato,
   deduplicação de webhooks, criação de **lead + conversa + consentimento +
   notificação** e resumo interno — tudo cai no CRM.
-- Instagram usa a mesma Graph API e já está previsto (`channel: "instagram"`).
+- **Página `/conversas`** real: lista os atendimentos por canal (site,
+  WhatsApp, Instagram) com última mensagem e link para o lead.
 - Guia completo em **`docs/INTEGRACAO-CANAIS.md`**.
 
 ### 💼 Fase 6 — Clientes, casos, processos, contratos e financeiro
