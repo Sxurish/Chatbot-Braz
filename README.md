@@ -111,8 +111,8 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 ## 📁 Estrutura de pastas
 
 ```
-middleware.ts                                    # proteção de rotas + sessão
 src/
+├── middleware.ts                                # proteção de rotas + sessão
 ├── app/
 │   ├── layout.tsx, globals.css, page.tsx        # raiz + landing
 │   ├── login/                                    # autenticação (Server Action)

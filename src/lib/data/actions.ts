@@ -208,6 +208,7 @@ export async function convertLeadToClientAction(
     .from("clients")
     .select("id")
     .eq("lead_id", leadId)
+    .limit(1)
     .maybeSingle();
 
   if (!existing) {
