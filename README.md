@@ -12,16 +12,21 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ## ✨ O que já está implementado (Fases 1, 2, 4, 5, 6 + canais)
 
-### 🤖 Assistente virtual da equipe (fase 1: consulta)
+### 🤖 Assistente virtual da equipe (fases 1 e 2: consulta e cadastro)
 
 - Botão flutuante em todas as telas (Ctrl+K) e página **`/assistente`** com
   histórico: perguntas sobre leads, clientes, casos, processos, prazos,
   tarefas e agenda, respondidas pelo **Claude Haiku** com link para o registro.
 - Só leitura, com o login de quem pergunta (RLS). **Financeiro e contratos só
   para Admin**, no banco e nas telas.
+- **Cadastro com confirmação** (fase 2): "cadastra uma tarefa...", "novo lead...",
+  ou anexe uma intimação/petição (PDF) ou print. A IA preenche um cartão com
+  processo, prazo, compromisso, lead, tarefa ou documento; nada é gravado até
+  a pessoa conferir e clicar em **Confirmar**. Avisa duplicados (mesmo número
+  CNJ, telefone, e-mail ou horário). Leitura de documentos com **Claude Sonnet**.
 - Limite de gasto mensal (US$ 50 por padrão) com aviso em 80%.
 - Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
-  `supabase/assistente-fase1.sql`.
+  `supabase/assistente-fase1.sql` e `supabase/assistente-fase2.sql`.
 
 ### 🔑 Primeiro acesso por convite
 

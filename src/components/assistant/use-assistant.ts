@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { DraftView } from "@/lib/assistant/draft-schema";
+import { uploadAttachment, type UploadMode } from "@/components/assistant/upload";
 
 export interface ChatTurn {
   id: string;
@@ -8,12 +10,19 @@ export interface ChatTurn {
   content: string;
   pending?: boolean;
   error?: boolean;
+  /** Arquivo enviado com a pergunta. */
+  attachments?: { id: string; name: string }[];
+  /** Rascunhos de cadastro preparados nesta resposta (cartões de confirmação). */
+  drafts?: DraftView[];
 }
 
 export interface AssistantStatus {
   configured: boolean;
   enabled: boolean;
   isAdmin: boolean;
+  canWrite?: boolean;
+  uploadMode?: UploadMode;
+  documentsAllowed?: boolean;
   budget: { level: "ok" | "warning" | "over" | "blocked"; message: string | null; spentUsd?: number; limitUsd?: number };
 }
 
@@ -42,15 +51,30 @@ function storeId(id: string | null) {
 let seq = 0;
 const uid = () => `t${Date.now().toString(36)}${(seq++).toString(36)}`;
 
-type LoadedMessages = { id: string; role: "user" | "assistant"; content: string }[];
+type LoadedMessage = {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  attachments?: { id: string; name: string }[];
+  tools_used?: { draftId?: string }[];
+};
 
-/** Busca as mensagens de uma conversa; null se não existe ou não é desta pessoa. */
-async function fetchMessages(id: string): Promise<LoadedMessages | null> {
+/** Busca as mensagens de uma conversa (com os cartões); null se não existe ou não é desta pessoa. */
+async function fetchTurns(id: string): Promise<ChatTurn[] | null> {
   try {
     const res = await fetch(`/api/assistente/conversas/${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!res.ok) return res.status === 404 ? null : [];
-    const data = (await res.json()) as { messages: LoadedMessages };
-    return data.messages;
+    const data = (await res.json()) as { messages: LoadedMessage[]; drafts?: DraftView[] };
+    const drafts = new Map((data.drafts ?? []).map((d) => [d.id, d]));
+    return data.messages.map((m) => ({
+      id: m.id,
+      role: m.role,
+      content: m.content,
+      attachments: m.attachments?.length ? m.attachments : undefined,
+      drafts: (m.tools_used ?? [])
+        .map((t) => (t.draftId ? drafts.get(t.draftId) : undefined))
+        .filter((d): d is DraftView => Boolean(d)),
+    }));
   } catch {
     return [];
   }
@@ -89,15 +113,15 @@ export function useAssistant(pagePath: string | null) {
   useEffect(() => {
     if (!conversationId || createdHereRef.current === conversationId) return;
     let cancelled = false;
-    fetchMessages(conversationId).then((messages) => {
+    fetchTurns(conversationId).then((loaded) => {
       if (cancelled) return;
-      if (messages === null) {
+      if (loaded === null) {
         setConversationId(null);
         setTurns([]);
         storeId(null);
         return;
       }
-      setTurns(messages.map((m) => ({ id: m.id, role: m.role, content: m.content })));
+      setTurns(loaded);
     });
     return () => {
       cancelled = true;
@@ -135,17 +159,23 @@ export function useAssistant(pagePath: string | null) {
   const stop = useCallback(() => abortRef.current?.abort(), []);
 
   const send = useCallback(
-    async (question: string) => {
+    async (question: string, file?: File | null) => {
       const message = question.trim();
-      if (!message || busy) return;
+      if ((!message && !file) || busy) return;
       const answerId = uid();
+      const userTurnId = uid();
       setTurns((prev) => [
         ...prev,
-        { id: uid(), role: "user", content: message },
+        {
+          id: userTurnId,
+          role: "user",
+          content: message,
+          attachments: file ? [{ id: "enviando", name: file.name }] : undefined,
+        },
         { id: answerId, role: "assistant", content: "", pending: true },
       ]);
       setBusy(true);
-      setToolLabel(null);
+      setToolLabel(file ? "Enviando o arquivo" : null);
       const controller = new AbortController();
       abortRef.current = controller;
 
@@ -153,10 +183,24 @@ export function useAssistant(pagePath: string | null) {
         setTurns((prev) => prev.map((t) => (t.id === answerId ? fn(t) : t)));
 
       try {
+        let attachmentId: string | null = null;
+        if (file) {
+          try {
+            const uploaded = await uploadAttachment(file, status?.uploadMode ?? "storage");
+            attachmentId = uploaded.id;
+            setTurns((prev) =>
+              prev.map((t) => (t.id === userTurnId ? { ...t, attachments: [uploaded] } : t))
+            );
+            setToolLabel("Lendo o arquivo");
+          } catch (err) {
+            patch((t) => ({ ...t, pending: false, error: true, content: (err as Error).message }));
+            return;
+          }
+        }
         const res = await fetch("/api/assistente", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message, conversationId, page: pagePath }),
+          body: JSON.stringify({ message, conversationId, page: pagePath, attachmentId }),
           signal: controller.signal,
         });
         if (!res.ok || !res.body) {
@@ -203,6 +247,9 @@ export function useAssistant(pagePath: string | null) {
               case "tool":
                 setToolLabel(String(event.label ?? "Consultando o CRM"));
                 break;
+              case "draft":
+                patch((t) => ({ ...t, drafts: [...(t.drafts ?? []), event.draft as DraftView] }));
+                break;
               case "error":
                 patch((t) => ({
                   ...t,
@@ -228,8 +275,19 @@ export function useAssistant(pagePath: string | null) {
         abortRef.current = null;
       }
     },
-    [busy, conversationId, pagePath]
+    [busy, conversationId, pagePath, status?.uploadMode]
   );
+
+  /** Atualiza um cartão depois de confirmar ou descartar. */
+  const updateDraft = useCallback((draftId: string, change: Partial<DraftView>) => {
+    setTurns((prev) =>
+      prev.map((t) =>
+        t.drafts?.some((d) => d.id === draftId)
+          ? { ...t, drafts: t.drafts.map((d) => (d.id === draftId ? { ...d, ...change } : d)) }
+          : t
+      )
+    );
+  }, []);
 
   return {
     turns,
@@ -241,6 +299,7 @@ export function useAssistant(pagePath: string | null) {
     budgetNotice,
     send,
     stop,
+    updateDraft,
     refreshStatus,
     selectConversation,
     newConversation: () => selectConversation(null),

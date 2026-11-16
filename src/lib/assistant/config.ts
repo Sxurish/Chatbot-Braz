@@ -1,13 +1,19 @@
 /**
- * Configuração do assistente virtual da equipe (Fase 1 — consulta no painel).
+ * Configuração do assistente virtual da equipe (fases 1 e 2).
  * Modelos e preços ficam aqui para mudar num lugar só.
  */
 
 /** Modelo do dia a dia: rápido e barato, escolhe a consulta certa e resume. */
 export const ASSISTANT_MODEL = process.env.ASSISTANT_MODEL || "claude-haiku-5-5";
 
+/** Modelo que lê PDFs e prints (fase 2): mais preciso em números CNJ, datas e nomes. */
+export const ASSISTANT_DOC_MODEL = process.env.ASSISTANT_DOC_MODEL || "claude-sonnet-5-5";
+
 /** Teto de tokens de saída por chamada (resposta + raciocínio). */
 export const ASSISTANT_MAX_TOKENS = 4096;
+
+/** Na leitura de documentos o modelo raciocina mais antes de responder. */
+export const ASSISTANT_DOC_MAX_TOKENS = 12_000;
 
 /** Máximo de rodadas de ferramentas por pergunta (evita laços). */
 export const ASSISTANT_MAX_TOOL_ROUNDS = 6;
@@ -41,7 +47,7 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   // Claude Haiku 5.5 (prompt de até 100 mil tokens).
   "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheWrite: 0.125, cacheRead: 0.01 },
   // Claude Sonnet 5.5 — usado na leitura de documentos (fase 2).
-  "claude-sonnet-5-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.2 },
+  "claude-sonnet-5-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.1 },
 };
 
 export function isAssistantConfigured(): boolean {

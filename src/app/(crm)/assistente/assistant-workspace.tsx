@@ -112,7 +112,7 @@ export function AssistantWorkspace() {
         <header className="flex items-center justify-between border-b bg-white px-4 py-3 sm:px-8">
           <div>
             <h2 className="text-base font-semibold text-slate-900">Assistente virtual</h2>
-            <p className="text-xs text-slate-500">Consultas rápidas a leads, clientes, casos, processos, prazos e agenda.</p>
+            <p className="text-xs text-slate-500">Consultas ao CRM e cadastros a partir de texto, PDF ou print, sempre com a sua confirmação.</p>
           </div>
           <button
             type="button"

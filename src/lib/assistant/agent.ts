@@ -33,6 +33,8 @@ export type AgentEvent =
 export interface ToolUseRecord {
   name: string;
   ok: boolean;
+  /** Rascunho de cadastro criado por esta chamada (cartão de confirmação). */
+  draftId?: string;
   /** Links de registros devolvidos pela ferramenta (para conferência). */
   links: string[];
 }
@@ -54,6 +56,9 @@ export interface RunAgentOptions {
   onEvent?: (event: AgentEvent) => void;
   signal?: AbortSignal;
   maxRounds?: number;
+  /** Esforço de raciocínio: "low" nas consultas, "medium" na leitura de documentos. */
+  effort?: "low" | "medium" | "high";
+  maxTokens?: number;
 }
 
 /** Limite de caracteres de um resultado de ferramenta enviado ao modelo. */
@@ -99,12 +104,12 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
     const stream = opts.client.messages.stream(
       {
         model: opts.model,
-        max_tokens: ASSISTANT_MAX_TOKENS,
+        max_tokens: opts.maxTokens ?? ASSISTANT_MAX_TOKENS,
         system: opts.system,
         tools: apiTools,
         ...(lastRound ? { tool_choice: { type: "none" as const } } : {}),
         // Consultas simples: pouco raciocínio, resposta rápida e barata.
-        output_config: { effort: "low" },
+        output_config: { effort: opts.effort ?? "low" },
         messages,
       },
       { signal: opts.signal }
@@ -154,11 +159,20 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
         opts.onEvent?.({ type: "tool", name: call.name, label: tool?.label ?? "Consultando o CRM" });
         // Ferramenta fora da lista desta pessoa (ex.: financeiro sem ser Admin) é negada.
         const outcome = tool
-          ? await executeTool(call.name, call.input, opts.ctx)
+          ? await executeTool(call.name, call.input, opts.ctx, opts.tools)
           : ({ ok: false, error: "Ferramenta não disponível para este usuário." } as const);
         const links = new Set<string>();
         if (outcome.ok) collectLinks(outcome.result, links);
-        toolsUsed.push({ name: call.name, ok: outcome.ok, links: [...links] });
+        const draftId =
+          outcome.ok && outcome.result && typeof outcome.result === "object"
+            ? (outcome.result as { rascunho_id?: unknown }).rascunho_id
+            : undefined;
+        toolsUsed.push({
+          name: call.name,
+          ok: outcome.ok,
+          links: [...links],
+          ...(typeof draftId === "string" ? { draftId } : {}),
+        });
         return {
           type: "tool_result",
           tool_use_id: call.id,

@@ -50,6 +50,14 @@ export interface ToolContext {
   isAdmin: boolean;
   /** "Agora" injetável para testes. */
   now: Date;
+  /** Pode preparar rascunhos de cadastro (todos menos Visualizador). */
+  canWrite?: boolean;
+  /** Conversa atual (os rascunhos ficam ligados a ela). */
+  conversationId?: string;
+  /** Arquivo anexado à pergunta atual, se houver. */
+  attachment?: { id: string; name: string } | null;
+  /** Avisa a interface de algo novo (ex.: um rascunho para conferir). */
+  emit?: (event: { type: "draft"; draft: unknown }) => void;
 }
 
 export interface AssistantTool<S extends z.ZodType = z.ZodType> {
@@ -59,10 +67,12 @@ export interface AssistantTool<S extends z.ZodType = z.ZodType> {
   description: string;
   schema: S;
   adminOnly?: boolean;
+  /** Prepara rascunho de cadastro (nunca grava): não é oferecida a quem só visualiza. */
+  writeOnly?: boolean;
   run: (input: z.output<S>, ctx: ToolContext) => Promise<unknown>;
 }
 
-function defineTool<S extends z.ZodType>(tool: AssistantTool<S>): AssistantTool {
+export function defineTool<S extends z.ZodType>(tool: AssistantTool<S>): AssistantTool {
   return tool as unknown as AssistantTool;
 }
 
@@ -753,12 +763,16 @@ export type ToolOutcome =
 export async function executeTool(
   name: string,
   rawInput: unknown,
-  ctx: ToolContext
+  ctx: ToolContext,
+  tools: AssistantTool[] = ALL_TOOLS
 ): Promise<ToolOutcome> {
-  const tool = ALL_TOOLS.find((t) => t.name === name);
+  const tool = tools.find((t) => t.name === name);
   if (!tool) return { ok: false, error: `Ferramenta desconhecida: ${name}` };
   if (tool.adminOnly && !ctx.isAdmin) {
     return { ok: false, error: "Acesso negado: dados financeiros são só para administradores." };
+  }
+  if (tool.writeOnly && !ctx.canWrite) {
+    return { ok: false, error: "Acesso negado: seu papel na equipe é só de visualização." };
   }
   const parsed = tool.schema.safeParse(rawInput ?? {});
   if (!parsed.success) {
@@ -772,6 +786,11 @@ export async function executeTool(
     return { ok: true, result: await tool.run(parsed.data, ctx) };
   } catch (err) {
     console.error(`[assistente] falha na ferramenta ${name}`, err);
-    return { ok: false, error: "Não consegui consultar essa informação agora." };
+    return {
+      ok: false,
+      error: tool.writeOnly
+        ? "Não consegui preparar o rascunho agora."
+        : "Não consegui consultar essa informação agora.",
+    };
   }
 }
