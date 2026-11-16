@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
+import { findTeamMemberByPhone, handleTeamWhatsapp, handleTeamWhatsappMedia } from "@/lib/assistant/whatsapp";
 import { ingestMessage } from "@/lib/channels/ingest";
-import {
-  getVerifyToken,
-  parseInbound,
-  sendText,
-  verifySignature,
-} from "@/lib/channels/whatsapp";
+import { dispatchWhatsappPayload } from "@/lib/channels/whatsapp-dispatch";
+import { getVerifyToken, sendText, verifySignature } from "@/lib/channels/whatsapp";
 
 export const runtime = "nodejs";
 // Evita qualquer cache; cada webhook é único.
 export const dynamic = "force-dynamic";
+// A resposta do assistente da equipe roda depois do 200 (after) e pode levar
+// alguns segundos (consultas ao CRM + IA).
+export const maxDuration = 60;
 
 /**
  * Verificação do webhook (handshake da Meta).
@@ -28,8 +28,10 @@ export async function GET(req: Request) {
 }
 
 /**
- * Recebimento de mensagens. Responde 200 rapidamente (a Meta exige) e
- * processa a triagem + persistência + envio da resposta.
+ * Recebimento de mensagens. Responde 200 rapidamente (a Meta exige).
+ * - Número cadastrado na tela Equipe → assistente da equipe (fase 4), que
+ *   roda depois da resposta à Meta.
+ * - Qualquer outro número → triagem de clientes + persistência + resposta.
  */
 export async function POST(req: Request) {
   const raw = await req.text();
@@ -46,21 +48,21 @@ export async function POST(req: Request) {
     return new NextResponse("Bad request", { status: 400 });
   }
 
-  const messages = parseInbound(payload);
-
-  // Processa cada mensagem; falhas individuais não derrubam o webhook.
-  await Promise.all(
-    messages.map(async (msg) => {
-      try {
-        const result = await ingestMessage(msg);
-        if (result.reply && !result.skipped) {
-          await sendText(msg.contactId, result.reply);
-        }
-      } catch (err) {
-        console.error("[whatsapp webhook] ingest error:", err);
+  // Falhas individuais não derrubam o webhook.
+  await dispatchWhatsappPayload(payload, {
+    // Sem o segredo do app a assinatura não é conferida: o assistente fica desligado.
+    teamEnabled: Boolean(process.env.WHATSAPP_APP_SECRET),
+    findMember: (contactId) => findTeamMemberByPhone(contactId),
+    team: (member, msg) => handleTeamWhatsapp(member, msg),
+    teamMedia: (_member, media) => handleTeamWhatsappMedia(media),
+    triage: async (msg) => {
+      const result = await ingestMessage(msg);
+      if (result.reply && !result.skipped) {
+        await sendText(msg.contactId, result.reply);
       }
-    })
-  );
+    },
+    defer: (task) => after(task),
+  });
 
   // Sempre 200 para a Meta não reenviar em loop.
   return NextResponse.json({ received: true });

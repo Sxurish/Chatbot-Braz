@@ -69,6 +69,34 @@ export function parseInbound(payload: any): InboundMessage[] {
   return out;
 }
 
+/** Mensagem sem texto (foto, documento, áudio...) recebida pelo WhatsApp. */
+export interface InboundMedia {
+  contactId: string;
+  messageId: string;
+  type: string;
+}
+
+/**
+ * Mensagens de mídia (sem texto) de um payload do WhatsApp. A triagem de
+ * clientes continua ignorando-as; o assistente da equipe (fase 4) só avisa
+ * que arquivos ainda vão pela página do CRM.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function parseInboundMedia(payload: any): InboundMedia[] {
+  const out: InboundMedia[] = [];
+  const MEDIA = new Set(["image", "document", "audio", "video", "sticker"]);
+  for (const entry of payload?.entry ?? []) {
+    for (const change of entry?.changes ?? []) {
+      for (const m of change?.value?.messages ?? []) {
+        if (typeof m?.type === "string" && MEDIA.has(m.type) && m.from && m.id) {
+          out.push({ contactId: String(m.from), messageId: String(m.id), type: m.type });
+        }
+      }
+    }
+  }
+  return out;
+}
+
 /** Envia uma mensagem de texto de volta ao usuário via Cloud API. */
 export async function sendText(to: string, body: string): Promise<void> {
   const token = process.env.WHATSAPP_ACCESS_TOKEN;

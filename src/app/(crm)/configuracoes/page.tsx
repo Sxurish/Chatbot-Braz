@@ -8,6 +8,9 @@ import { IntegrationsStatus } from "./integrations-status";
 import { AssistantForm } from "./assistant-form";
 import { isAssistantConfigured } from "@/lib/assistant/config";
 import { AssistantSetupError, getMonthSpendUsd } from "@/lib/assistant/store";
+import { DigestSettings } from "./digest-settings";
+import { listDigestRecipients } from "@/lib/digest/recipients";
+import { digestTemplateConfig } from "@/lib/digest/whatsapp-template";
 
 async function readMonthSpend(): Promise<{ spent: number | null; setupMissing: boolean }> {
   try {
@@ -24,6 +27,9 @@ export default async function Page() {
   const integrations = getIntegrationStatus(settings.ai_provider);
   const readOnly = !admin.ok;
   const spend = admin.ok ? await readMonthSpend() : { spent: null, setupMissing: false };
+  // Resumo diário: só o Admin vê quem recebe e os números (mascarados).
+  const digestRecipients = admin.ok ? await listDigestRecipients() : null;
+  const template = digestTemplateConfig();
 
   return (
     <>
@@ -56,6 +62,16 @@ export default async function Page() {
           setupMissing={spend.setupMissing}
           readOnly={readOnly}
         />
+        {digestRecipients && (
+          <DigestSettings
+            recipients={digestRecipients.recipients}
+            setupMissing={digestRecipients.setupMissing}
+            whatsappConfigured={template.configured}
+            cronConfigured={Boolean(process.env.CRON_SECRET)}
+            templateName={template.name}
+            templateLang={template.lang}
+          />
+        )}
         <IntegrationsStatus status={integrations} />
       </div>
     </>

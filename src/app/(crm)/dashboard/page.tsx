@@ -25,10 +25,18 @@ import {
   getWeeklyEvolution,
 } from "@/lib/metrics";
 import { listLeads } from "@/lib/data/leads";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getLiveDigest } from "@/lib/digest/live";
+import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
+
+// O resumo do dia é calculado na hora para quem está logado.
+export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const leads = await listLeads();
+  const now = new Date();
+  const [leads, user] = await Promise.all([listLeads(), getCurrentUser()]);
   const m = getDashboardMetrics(leads);
+  const live = await getLiveDigest(user, now);
 
   return (
     <>
@@ -36,6 +44,8 @@ export default async function DashboardPage() {
         title="Dashboard geral"
         description="Visão consolidada do atendimento e da operação jurídica do escritório."
       />
+
+      <DailyDigestCard digest={live.digest} error={live.error} todaySend={live.todaySend} now={now} />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Total de leads" value={m.totalLeads} icon={Users} />

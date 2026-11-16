@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getTeamMemberContext } from "@/lib/supabase/request-context";
 import type { TeamUser, UserRole } from "@/lib/types";
 
 /**
@@ -17,6 +18,11 @@ const DEMO_USER: TeamUser = {
 };
 
 export async function getCurrentUser(): Promise<TeamUser> {
+  // Pedido pelo WhatsApp: a pessoa reconhecida pelo número (nunca o perfil de
+  // demonstração, que é Admin).
+  const member = getTeamMemberContext();
+  if (member) return member.user;
+
   if (!isSupabaseConfigured()) return DEMO_USER;
 
   const supabase = await createClient();

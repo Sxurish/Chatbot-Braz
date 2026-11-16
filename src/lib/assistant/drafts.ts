@@ -12,7 +12,8 @@ import type {
 
 /**
  * Persistência dos rascunhos de cadastro. Cada rascunho é de quem o pediu
- * (RLS); confirmar troca o status de "pendente" para "confirmando" numa
+ * (RLS, e user_id explícito em toda consulta: pelo WhatsApp o cliente é o
+ * service role e a RLS não filtra); confirmar troca o status de "pendente" para "confirmando" numa
  * única atualização condicional, para não gravar duas vezes.
  */
 
@@ -28,6 +29,7 @@ export interface DraftRow {
   attachment_name: string | null;
   status: DraftStatus;
   result_link: string | null;
+  created_at?: string;
 }
 
 const g = globalThis as unknown as { __assistantDrafts?: Map<string, DraftRow> };
@@ -37,7 +39,7 @@ function demo() {
 }
 
 const SELECT =
-  "id, user_id, conversation_id, kind, data, uncertain, duplicates, attachment_id, status, result_link, attachment:assistant_attachments(file_name)";
+  "id, user_id, conversation_id, kind, data, uncertain, duplicates, attachment_id, status, result_link, created_at, attachment:assistant_attachments(file_name)";
 
 type RawRow = Omit<DraftRow, "attachment_name"> & { attachment?: { file_name: string } | { file_name: string }[] | null };
 
@@ -58,6 +60,7 @@ export function toView(r: DraftRow): DraftView {
     attachment: r.attachment_id ? { id: r.attachment_id, name: r.attachment_name ?? "arquivo" } : null,
     status: r.status,
     resultLink: r.result_link,
+    ...(r.created_at ? { createdAt: r.created_at } : {}),
   };
 }
 
@@ -91,6 +94,7 @@ export async function createDraft(
       attachment_name: input.attachment?.name ?? null,
       status: "pendente",
       result_link: null,
+      created_at: new Date().toISOString(),
     };
     demo().set(row.id, row);
     return toView(row);

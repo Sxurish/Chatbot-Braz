@@ -1,11 +1,17 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { getTeamMemberContext } from "@/lib/supabase/request-context";
 
 /**
  * Cliente Supabase para uso no server (Server Components, Route Handlers,
  * Server Actions). Mantém a sessão sincronizada via cookies.
  */
 export async function createClient() {
+  // Pedido sem navegador (assistente pelo WhatsApp): usa o cliente da pessoa
+  // reconhecida pelo número. Ver src/lib/supabase/request-context.ts.
+  const member = getTeamMemberContext();
+  if (member?.client) return member.client;
+
   const cookieStore = await cookies();
 
   return createServerClient(

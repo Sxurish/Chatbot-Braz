@@ -5,14 +5,23 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Datas sempre no fuso de São Paulo: o servidor (UTC na Vercel) e o navegador
+ * mostram o mesmo texto, sem erro de hidratação. Data pura (AAAA-MM-DD) não
+ * muda de dia por causa do fuso.
+ */
+const TIME_ZONE = "America/Sao_Paulo";
+
 export function formatDate(value: string | Date | null | undefined): string {
   if (!value) return "—";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
+  const dateOnly = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
     year: "numeric",
+    timeZone: dateOnly ? "UTC" : TIME_ZONE,
   }).format(date);
 }
 
@@ -26,6 +35,7 @@ export function formatDateTime(value: string | Date | null | undefined): string 
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: TIME_ZONE,
   }).format(date);
 }
 

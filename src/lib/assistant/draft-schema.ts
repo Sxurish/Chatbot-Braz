@@ -51,6 +51,8 @@ export interface DraftView {
   attachment: { id: string; name: string } | null;
   status: DraftStatus;
   resultLink: string | null;
+  /** Quando foi preparado (WhatsApp: "OK" só vale por 2 horas). */
+  createdAt?: string;
 }
 
 const opts = <T extends string>(labels: Record<T, string>) =>

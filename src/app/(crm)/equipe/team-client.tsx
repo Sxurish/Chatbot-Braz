@@ -2,7 +2,18 @@
 
 import { useActionState, useState } from "react";
 import { useFormStatus } from "react-dom";
-import { AlertCircle, Check, CheckCircle2, Copy, Loader2, RotateCw, UserPlus, X } from "lucide-react";
+import {
+  AlertCircle,
+  Bell,
+  Check,
+  CheckCircle2,
+  Copy,
+  Loader2,
+  MessageCircle,
+  RotateCw,
+  UserPlus,
+  X,
+} from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,10 +26,13 @@ import {
   createInviteAction,
   renewInviteAction,
   updateMemberAction,
+  updateMemberWhatsappAction,
   type TeamActionState,
 } from "@/lib/auth/team-actions";
 import { INVITE_VALIDITY_DAYS, ROLE_OPTIONS } from "@/lib/auth/invite-rules";
 import type { TeamInvite } from "@/lib/data/invites";
+import type { MemberWhatsapp } from "@/lib/data/team-whatsapp";
+import { formatWhatsappNumber, maskWhatsappNumber } from "@/lib/whatsapp-number";
 import type { TeamUser, UserRole } from "@/lib/types";
 import { cn, formatDate, formatDateTime, getInitials } from "@/lib/utils";
 
@@ -200,21 +214,149 @@ export function InviteList({ invites, loginUrl }: { invites: TeamInvite[]; login
   );
 }
 
-export function MemberRow({ user, editable }: { user: TeamUser; editable: boolean }) {
+function SubmitWhatsapp() {
+  const { pending } = useFormStatus();
+  return (
+    <Button type="submit" disabled={pending}>
+      {pending && <Loader2 className="h-4 w-4 animate-spin" />} Salvar
+    </Button>
+  );
+}
+
+/** Admin: número de WhatsApp do assistente e resumo diário de uma pessoa. */
+export function WhatsappButton({
+  user,
+  whatsapp,
+  defaultOpen = false,
+}: {
+  user: TeamUser;
+  whatsapp: MemberWhatsapp;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const [state, action] = useActionState(updateMemberWhatsappAction, {} as TeamActionState);
+  const [number, setNumber] = useState(formatWhatsappNumber(whatsapp.whatsapp_number));
+  const [digest, setDigest] = useState(whatsapp.daily_digest);
+  const fieldId = `wa-${user.id}`;
+
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        title={`WhatsApp e resumo diário de ${user.name}`}
+      >
+        <MessageCircle className="h-4 w-4" /> WhatsApp
+      </Button>
+      <Dialog
+        open={open}
+        onClose={() => setOpen(false)}
+        title={`WhatsApp de ${user.name}`}
+        description="Este número passa a falar com o assistente do CRM pelo WhatsApp, com o mesmo papel desta pessoa (sem financeiro). Mensagens de outros números seguem para a triagem de clientes."
+      >
+        <form action={action} className="space-y-4">
+          <input type="hidden" name="id" value={user.id} />
+          <div className="space-y-1.5">
+            <label htmlFor={fieldId} className="block text-sm leading-6 font-medium text-slate-700">
+              Número com DDI e DDD
+            </label>
+            <Input
+              id={fieldId}
+              name="whatsapp_number"
+              inputMode="tel"
+              autoComplete="off"
+              maxLength={40}
+              value={number}
+              onChange={(e) => setNumber(e.target.value)}
+              placeholder="+55 11 98888-7777"
+            />
+            <p className="text-xs text-slate-500">Deixe em branco para tirar o acesso pelo WhatsApp.</p>
+          </div>
+          <label className="flex items-start gap-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="daily_digest"
+              value="true"
+              checked={digest}
+              onChange={(e) => setDigest(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded-sm border-slate-300 text-brand-primary focus:ring-brand-primary"
+            />
+            <span>
+              Recebe o resumo diário
+              <span className="block text-xs text-slate-500">
+                Prazos, tarefas e novidades do dia, no painel e no WhatsApp cadastrado.
+              </span>
+            </span>
+          </label>
+          {state.error && (
+            <p role="alert" className="flex items-center gap-1.5 text-sm text-red-600">
+              <AlertCircle className="h-4 w-4 shrink-0" /> {state.error}
+            </p>
+          )}
+          {state.ok && (
+            <p role="status" className="flex items-center gap-1.5 text-sm text-emerald-700">
+              <CheckCircle2 className="h-4 w-4 shrink-0" /> {state.message}
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
+              Fechar
+            </Button>
+            <SubmitWhatsapp />
+          </div>
+        </form>
+      </Dialog>
+    </>
+  );
+}
+
+export function MemberRow({
+  user,
+  editable,
+  whatsapp,
+  whatsappEditable = false,
+  whatsappOpen = false,
+}: {
+  user: TeamUser;
+  editable: boolean;
+  /** Só para Admin: número do assistente e resumo diário. */
+  whatsapp?: MemberWhatsapp;
+  whatsappEditable?: boolean;
+  whatsappOpen?: boolean;
+}) {
+  const masked = maskWhatsappNumber(whatsapp?.whatsapp_number);
   return (
     <div className={cn("flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between", !user.active && "bg-slate-50/60")}>
-      <div className="flex items-center gap-3">
+      <div className="flex min-w-0 items-center gap-3">
         <Avatar fallback={getInitials(user.name)} />
-        <div>
+        <div className="min-w-0">
           <p className={cn("font-medium", user.active ? "text-slate-900" : "text-slate-400")}>
             {user.name}
             {!user.active && <span className="ml-2 text-xs font-normal text-slate-400">(desativado)</span>}
           </p>
-          <p className="text-xs text-slate-500">{user.email}</p>
+          <p className="truncate text-xs text-slate-500">{user.email}</p>
+          {whatsapp && (masked || whatsapp.daily_digest) && (
+            <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
+              {masked && (
+                <span className="inline-flex items-center gap-1" title="WhatsApp autorizado a falar com o assistente">
+                  <MessageCircle className="h-3.5 w-3.5 text-emerald-600" aria-hidden />
+                  <span className="tabular-nums">{masked}</span>
+                </span>
+              )}
+              {whatsapp.daily_digest && (
+                <span className="inline-flex items-center gap-1">
+                  <Bell className="h-3.5 w-3.5 text-brand-primary" aria-hidden /> Resumo diário
+                </span>
+              )}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="hidden text-xs text-slate-400 md:inline">Último acesso: {formatDateTime(user.last_login)}</span>
+        <span className="hidden text-xs text-slate-400 lg:inline">Último acesso: {formatDateTime(user.last_login)}</span>
+        {whatsapp && whatsappEditable && <WhatsappButton user={user} whatsapp={whatsapp} defaultOpen={whatsappOpen} />}
         {editable ? (
           <>
             <form action={updateMemberAction}>

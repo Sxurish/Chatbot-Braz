@@ -1,15 +1,14 @@
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
+import { isSafeInternalHref } from "@/lib/assistant/links";
+
+export { isSafeInternalHref };
 
 /**
  * Markdown mínimo e seguro para as respostas do assistente: parágrafos, listas,
  * **negrito**, _itálico_, `código` e links. Nada de HTML cru; links só para
  * caminhos internos do CRM (começam com "/"). Qualquer outro link vira texto.
  */
-
-export function isSafeInternalHref(href: string): boolean {
-  return /^\/(?!\/)[\w\-./?=&%#:]*$/.test(href) && !/^\/\\/.test(href);
-}
 
 const INLINE = /(\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|`([^`]+)`|(?<![\w])_([^_]+)_(?![\w]))/g;
 

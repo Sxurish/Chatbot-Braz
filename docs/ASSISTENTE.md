@@ -137,6 +137,17 @@ existentes pelo assistente não está no escopo.
 | Custo e limite | `src/lib/assistant/cost.ts`, `config.ts` |
 | Persistência | `src/lib/assistant/store.ts` |
 | Interface (cartão em `draft-card.tsx`) | `src/components/assistant/*`, `src/app/(crm)/assistente/*` |
+| Partes comuns ao painel e ao WhatsApp (notas do histórico, erros da IA) | `src/lib/assistant/turn.ts`, `src/lib/assistant/links.ts` |
+| Assistente pelo WhatsApp (fase 4): roteamento do número da equipe | `src/lib/channels/whatsapp-dispatch.ts`, `src/app/api/webhooks/whatsapp/route.ts` |
+| Assistente pelo WhatsApp: resposta, "OK"/"CANCELAR", sem financeiro | `src/lib/assistant/whatsapp.ts`, `whatsapp-format.ts` |
+| Identidade sem cookie no WhatsApp (service role + filtros no código) | `src/lib/supabase/request-context.ts` |
+| WhatsApp e resumo diário na tela Equipe | `src/app/(crm)/equipe/*`, `src/lib/auth/team-actions.ts`, `src/lib/whatsapp-number.ts` |
+
+Pelo WhatsApp (fase 4) o assistente funciona sem login: a pessoa é
+reconhecida pelo número cadastrado na Equipe e as consultas usam a chave de
+serviço, com filtros no código (sem financeiro para ninguém, conversas e
+rascunhos sempre pelo id da pessoa). Detalhes em
+[RESUMO-E-WHATSAPP.md](RESUMO-E-WHATSAPP.md#assistente-pelo-whatsapp).
 
 As rotas `/api/*` não passam pelo proxy de login: a rota do assistente
 confere sessão e perfil ativo em `public.users` antes de responder, e o
@@ -148,7 +159,9 @@ papel vem só do perfil (nunca dos metadados do usuário).
 das consultas, laço com ferramentas usando um cliente falso, custo e limite,
 links seguros nas respostas, validação dos rascunhos, número CNJ e datas,
 duplicados, tipos de arquivo, quem pode preparar cadastros, consultas e
-lançamento de andamentos, leitura da resposta do DataJud e sincronização).
+lançamento de andamentos, leitura da resposta do DataJud e sincronização;
+na fase 4, o assistente pelo WhatsApp: roteamento do número da equipe,
+nenhum financeiro, "OK"/"CANCELAR", formatação e divisão das mensagens).
 
 ### Envio do arquivo
 
