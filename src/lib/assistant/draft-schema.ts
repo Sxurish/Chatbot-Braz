@@ -4,7 +4,7 @@ import { CATEGORY_LABELS } from "@/lib/data/documents-types";
 import type { DocumentCategory, LegalArea, LegalStatus, Urgency } from "@/lib/types";
 
 /**
- * Rascunhos de cadastro do assistente (fase 2).
+ * Rascunhos de cadastro do assistente (fase 2; andamento na fase 3).
  *
  * Este arquivo é usado no servidor e no navegador: define os tipos de
  * rascunho, os campos que o cartão de confirmação mostra, a validação final
@@ -12,7 +12,7 @@ import type { DocumentCategory, LegalArea, LegalStatus, Urgency } from "@/lib/ty
  * grava: quem grava é a rota de confirmação, depois do clique em Confirmar.
  */
 
-export const DRAFT_KINDS = ["processo", "lead", "tarefa", "prazo", "compromisso", "documento"] as const;
+export const DRAFT_KINDS = ["processo", "lead", "tarefa", "prazo", "compromisso", "documento", "andamento"] as const;
 export type DraftKind = (typeof DRAFT_KINDS)[number];
 
 export type LinkEntity = "case" | "lead" | "client" | "process" | "user";
@@ -179,6 +179,21 @@ export const DRAFT_DEFS: Record<DraftKind, { title: string; fields: FieldDef[] }
       { key: "client_id", label: "Cliente", type: "link", entity: "client" },
     ],
   },
+  // Andamento lançado pela equipe: entra travado (a busca no DataJud nunca o altera).
+  andamento: {
+    title: "Registrar andamento",
+    fields: [
+      { key: "process_id", label: "Processo", type: "link", entity: "process", required: true },
+      { key: "occurred_at", label: "Data do andamento", type: "datetime", required: true },
+      {
+        key: "description",
+        label: "O que aconteceu",
+        type: "textarea",
+        required: true,
+        placeholder: "Protocolada a réplica pelo escritório.",
+      },
+    ],
+  },
 };
 
 /** Categoria sugerida para o arquivo anexado, conforme o tipo de cadastro. */
@@ -189,6 +204,7 @@ export const DEFAULT_ATTACH_CATEGORY: Record<DraftKind, DocumentCategory> = {
   prazo: "intimacao",
   compromisso: "outros",
   documento: "outros",
+  andamento: "outros",
 };
 
 export function linkLabelKey(key: string) {
@@ -201,6 +217,16 @@ export function linkLabelKey(key: string) {
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const DATETIME_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
 const TIME_RE = /^\d{2}:\d{2}$/;
+
+/** Data de hoje (AAAA-MM-DD) em São Paulo. */
+function todayInSaoPaulo(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
 
 function validDate(value: string) {
   const d = new Date(`${value.slice(0, 10)}T12:00:00-03:00`);
@@ -378,6 +404,22 @@ export const CONFIRM_SCHEMAS = {
       message: "Escolha onde anexar: processo, caso, lead ou cliente.",
       path: ["process_id"],
     }),
+  andamento: z
+    .object({
+      process_id: uuid,
+      occurred_at: z
+        .string({ error: "Informe a data do andamento." })
+        .trim()
+        .min(1, "Informe a data do andamento.")
+        .refine((v) => (DATETIME_RE.test(v) || DATE_RE.test(v)) && validDate(v), "Data do andamento inválida.")
+        .refine((v) => v.slice(0, 10) <= todayInSaoPaulo(), "A data do andamento não pode estar no futuro."),
+      description: z
+        .string({ error: "Descreva o andamento." })
+        .trim()
+        .min(3, "Descreva o andamento.")
+        .max(2000, "Texto muito longo (máx. 2000)."),
+    })
+    .refine((v) => v.process_id, { message: "Escolha o processo do andamento.", path: ["process_id"] }),
 } satisfies Record<DraftKind, z.ZodType>;
 
 export type ConfirmedData<K extends DraftKind> = z.output<(typeof CONFIRM_SCHEMAS)[K]>;
@@ -414,7 +456,7 @@ export function pickDraftFields(kind: DraftKind, data: unknown): DraftData {
 export interface InsertPlan {
   /** Caso novo a criar antes do processo (o id dele entra em process.case_id). */
   newCase?: Record<string, unknown>;
-  table: "processes" | "leads" | "tasks" | "appointments" | "documents";
+  table: "processes" | "leads" | "tasks" | "appointments" | "documents" | "process_movements";
   row: Record<string, unknown>;
   /** Prazo: atualiza o próximo prazo do processo. */
   processDeadline?: { processId: string; deadline: string };
@@ -452,7 +494,7 @@ export function buildInsertPlan<K extends DraftKind>(kind: K, input: ConfirmedDa
         attach: d.attach_file
           ? { category: d.attach_category ?? "processo", links: { case_id: d.case_id, client_id: d.client_id } }
           : undefined,
-        link: "/processos",
+        link: "/processos/{id}",
       };
     }
     case "lead": {
@@ -561,6 +603,20 @@ export function buildInsertPlan<K extends DraftKind>(kind: K, input: ConfirmedDa
           review_status: "pendente",
         },
         link: d.lead_id ? `/leads/${d.lead_id}` : "/documentos",
+      };
+    }
+    case "andamento": {
+      const d = input as ConfirmedData<"andamento">;
+      return {
+        table: "process_movements",
+        row: {
+          process_id: d.process_id,
+          occurred_at: toSaoPauloIso(d.occurred_at),
+          description: d.description,
+          // O banco só aceita "manual" da equipe; o gatilho trava e preenche o autor.
+          source: "manual",
+        },
+        link: `/processos/${encodeURIComponent(d.process_id!)}`,
       };
     }
   }

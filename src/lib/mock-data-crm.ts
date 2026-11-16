@@ -2,7 +2,7 @@
  * Dados mockados das entidades da Fase 6 (clientes, casos, processos,
  * contratos e pagamentos). Coerentes com os leads de `mock-data.ts`.
  */
-import type { Case, Client, Contract, Payment, Process } from "./types";
+import type { Case, Client, Contract, Payment, Process, ProcessMovement } from "./types";
 
 export const mockClients: Client[] = [
   {
@@ -74,9 +74,58 @@ export const mockProcesses: Process[] = [
     subject: "Alienação fiduciária / contratos bancários",
     status: "em_andamento",
     next_deadline: "2026-06-10T18:00:00Z",
+    sync_enabled: true,
+    last_synced_at: "2026-11-16T09:05:00Z",
+    sync_error: null,
     created_at: "2026-05-29T19:40:00Z",
     updated_at: "2026-05-30T10:00:00Z",
   },
+];
+
+/** Andamentos de exemplo (modo demonstração). */
+const mov = (
+  id: string,
+  occurred_at: string,
+  description: string,
+  extra: Partial<ProcessMovement> = {}
+): ProcessMovement => ({
+  id,
+  process_id: "proc-001",
+  occurred_at,
+  description,
+  movement_code: null,
+  source: "datajud",
+  external_key: `G1:${id}`,
+  instance: "G1",
+  locked: false,
+  hidden: false,
+  created_by: null,
+  edited_by: null,
+  edited_at: null,
+  created_at: occurred_at,
+  updated_at: occurred_at,
+  ...extra,
+});
+
+export const mockMovements: ProcessMovement[] = [
+  mov("mov-001", "2026-05-29T13:10:00Z", "Distribuição (sorteio)", { movement_code: 26 }),
+  mov("mov-002", "2026-06-02T17:42:00Z", "Conclusão (para despacho)", { movement_code: 51 }),
+  mov("mov-003", "2026-06-05T14:00:00Z", "Expedição de documento (Mandado)", { movement_code: 60 }),
+  mov(
+    "mov-004",
+    "2026-06-06T12:30:00Z",
+    "Protocolada contestação pelo escritório (prazo cumprido).",
+    { source: "manual", external_key: null, instance: null, locked: true, created_by: "demo-admin" }
+  ),
+  mov("mov-005", "2026-11-12T18:20:00Z", "Juntada de Petição (Réplica)", {
+    movement_code: 85,
+    locked: true,
+    edited_by: "demo-admin",
+    edited_at: "2026-11-13T11:00:00Z",
+  }),
+  mov("mov-006", "2026-11-14T16:05:00Z", "Designada audiência de conciliação para 03/12/2026 14:00", {
+    movement_code: 970,
+  }),
 ];
 
 export const mockContracts: Contract[] = [

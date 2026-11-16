@@ -1,11 +1,13 @@
-# Assistente virtual da equipe — Fases 1 e 2 (consulta e cadastro)
+# Assistente virtual da equipe — Fases 1 a 3 (consulta, cadastro e andamentos)
 
 Assistente com IA dentro do CRM. Responde perguntas sobre leads, clientes,
 casos, processos, prazos, tarefas, agenda e follow-ups, sempre consultando o
 CRM e com link para o registro (fase 1). Desde a fase 2 também **prepara
 cadastros**, inclusive a partir de um PDF ou print, mas **nada é gravado sem a
-pessoa conferir e clicar em Confirmar**. Andamentos e edição de registros
-existentes ficam para a fase 3.
+pessoa conferir e clicar em Confirmar**. Desde a fase 3 responde sobre os
+andamentos dos processos e prepara o lançamento de andamento manual (a busca
+nos tribunais está em [ANDAMENTOS.md](ANDAMENTOS.md)). Edição de registros
+existentes pelo assistente não está no escopo.
 
 ## Como usar (guia para a equipe)
 
@@ -49,6 +51,29 @@ existentes ficam para a fase 3.
 - O texto dos documentos é tratado só como dado. Instruções escritas dentro
   de um PDF ou print nunca são seguidas.
 
+### Andamentos (fase 3)
+
+- Consultas:
+  - "O que mudou nos processos do cliente Carlos Silva?" (andamentos dos
+    últimos 7 dias, agrupados por processo; dá para pedir outro período, até
+    60 dias, ou filtrar pelo caso).
+  - "Andamentos do processo 1002345-67.2026.8.26.0554" (aceita o número com ou
+    sem pontuação; na página do processo, "os andamentos deste processo").
+- Cada andamento aparece com a data, a origem (**tribunal**, vindo do
+  DataJud, ou **equipe**, lançado no CRM) e se está **travado** (lançado ou
+  editado pela equipe: a busca automática nunca o altera). A resposta cita
+  quando foi a última busca no DataJud e o aviso de falha, se houver.
+- O DataJud costuma atrasar alguns dias e não traz processos em segredo de
+  justiça. O assistente não busca no DataJud: para atualizar, clique em
+  **Buscar agora** na página do processo (o assistente manda o link).
+- Lançar andamento: "Registra que protocolamos a réplica hoje no processo
+  1002345-67.2026.8.26.0554" ou "lança um andamento...". Vem o cartão
+  **Registrar andamento** (processo, data e o que aconteceu), que só grava ao
+  clicar em Confirmar. O andamento entra como "equipe" e travado. Avisa se já
+  houver andamento parecido no mesmo processo e no mesmo dia.
+- Com uma intimação anexada a um processo já cadastrado, o assistente pode
+  preparar dois cartões: o prazo e o andamento.
+
 ## Regras de acesso
 
 - O assistente consulta o banco **com o login de quem pergunta**, então as
@@ -87,6 +112,8 @@ existentes ficam para a fase 3.
 2. Para a fase 2, rode também `supabase/assistente-fase2.sql` (cria as
    tabelas de anexos e rascunhos com RLS). Quem instala do zero pode usar
    `supabase/instalacao-completa.sql`, que já inclui tudo.
+   Para a fase 3, rode `supabase/assistente-fase3.sql` (andamentos; ver
+   [ANDAMENTOS.md](ANDAMENTOS.md) para `CRON_SECRET` e a rotina diária).
 3. Na Vercel, adicione `ANTHROPIC_API_KEY` (chave da conta do escritório) e
    faça um novo deploy. `ASSISTANT_MODEL` e `ASSISTANT_DOC_MODEL` são
    opcionais.
@@ -99,10 +126,11 @@ existentes ficam para a fase 3.
 | Rota de chat (streaming NDJSON) | `src/app/api/assistente/route.ts` |
 | Histórico | `src/app/api/assistente/conversas/**` |
 | Laço com ferramentas | `src/lib/assistant/agent.ts` |
-| Ferramentas de consulta | `src/lib/assistant/tools.ts` |
-| Ferramentas de rascunho (`preparar_*`) | `src/lib/assistant/draft-tools.ts` |
+| Ferramentas de consulta (inclui `andamentos_do_processo` e `andamentos_recentes`) | `src/lib/assistant/tools.ts` |
+| Andamentos recentes de vários processos (consulta do assistente) | `src/lib/data/movements-recent.ts` |
+| Ferramentas de rascunho (`preparar_*`, inclui `preparar_andamento`) | `src/lib/assistant/draft-tools.ts` |
 | Campos, validação e linhas do banco | `src/lib/assistant/draft-schema.ts` |
-| Duplicados | `src/lib/assistant/duplicates.ts` |
+| Duplicados (inclui andamento igual no mesmo dia) | `src/lib/assistant/duplicates.ts` |
 | Confirmar / descartar | `src/lib/assistant/confirm-draft.ts`, `src/app/api/assistente/rascunhos/[id]/route.ts` |
 | Anexos (envio, leitura, retenção) | `src/lib/assistant/attachments.ts`, `attachment-rules.ts`, `src/app/api/assistente/anexos/route.ts` |
 | Instruções do modelo | `src/lib/assistant/prompt.ts` |
@@ -119,7 +147,8 @@ papel vem só do perfil (nunca dos metadados do usuário).
 `npm test` roda os testes automáticos (permissões do financeiro, filtros
 das consultas, laço com ferramentas usando um cliente falso, custo e limite,
 links seguros nas respostas, validação dos rascunhos, número CNJ e datas,
-duplicados, tipos de arquivo e quem pode preparar cadastros).
+duplicados, tipos de arquivo, quem pode preparar cadastros, consultas e
+lançamento de andamentos, leitura da resposta do DataJud e sincronização).
 
 ### Envio do arquivo
 

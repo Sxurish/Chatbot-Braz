@@ -219,7 +219,8 @@ export type NotificationType =
   | "follow_up_pendente"
   | "contrato_enviado"
   | "contrato_assinado"
-  | "pagamento_atraso";
+  | "pagamento_atraso"
+  | "andamento_novo";
 
 export interface AppNotification {
   id: string;
@@ -275,6 +276,32 @@ export interface Process {
   subject: string | null;
   status: LegalStatus;
   next_deadline: string | null;
+  /** Fase 3: busca automática de andamentos no DataJud. */
+  sync_enabled?: boolean;
+  last_synced_at?: string | null;
+  sync_error?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type MovementSource = "datajud" | "manual";
+
+/** Andamento de um processo (tabela process_movements). */
+export interface ProcessMovement {
+  id: string;
+  process_id: string;
+  occurred_at: string;
+  description: string;
+  movement_code: number | null;
+  source: MovementSource;
+  external_key: string | null;
+  instance: string | null;
+  /** Manual ou editado pela equipe: a busca automática nunca altera. */
+  locked: boolean;
+  hidden: boolean;
+  created_by: string | null;
+  edited_by: string | null;
+  edited_at: string | null;
   created_at: string;
   updated_at: string;
 }

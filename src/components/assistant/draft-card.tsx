@@ -331,6 +331,7 @@ function Field({
       <div>
         <p className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-600">
           {f.label}
+          {f.required && <span className="text-red-500">*</span>}
           {uncertain && <span className="text-amber-700">(conferir)</span>}
         </p>
         {value ? (
@@ -407,7 +408,10 @@ function Field({
           {...common}
           type={
             f.type === "datetime"
-              ? "datetime-local"
+              ? // Data sem horário (a IA pode mandar só AAAA-MM-DD): mostra como data.
+                /^\d{4}-\d{2}-\d{2}$/.test(str)
+                ? "date"
+                : "datetime-local"
               : f.type === "text"
                 ? "text"
                 : f.type

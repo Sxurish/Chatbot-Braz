@@ -33,7 +33,7 @@ export function renderInline(text: string, keyPrefix = "i"): ReactNode[] {
         )
       );
     } else if (m[4] !== undefined) {
-      out.push(<strong key={key} className="font-semibold text-slate-900">{m[4]}</strong>);
+      out.push(<strong key={key} className="font-semibold text-slate-900">{renderInline(m[4], key)}</strong>);
     } else if (m[5] !== undefined) {
       out.push(<code key={key} className="rounded bg-slate-100 px-1 py-0.5 text-[0.85em]">{m[5]}</code>);
     } else if (m[6] !== undefined) {

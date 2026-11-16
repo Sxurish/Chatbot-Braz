@@ -9,6 +9,7 @@ import {
   UserPlus,
   FileSignature,
   Wallet,
+  Gavel,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
@@ -32,6 +33,7 @@ const ICONS: Record<
   contrato_enviado: { icon: FileSignature, tone: "bg-indigo-100 text-indigo-600" },
   contrato_assinado: { icon: FileSignature, tone: "bg-emerald-100 text-emerald-600" },
   pagamento_atraso: { icon: Wallet, tone: "bg-red-100 text-red-600" },
+  andamento_novo: { icon: Gavel, tone: "bg-violet-100 text-violet-600" },
 };
 
 export default async function NotificationsPage() {
@@ -63,9 +65,11 @@ export default async function NotificationsPage() {
             const href =
               n.entity_type === "lead" && n.entity_id
                 ? `/leads/${n.entity_id}`
-                : n.entity_type === "task"
-                  ? "/tarefas"
-                  : null;
+                : n.entity_type === "process" && n.entity_id
+                  ? `/processos/${n.entity_id}`
+                  : n.entity_type === "task"
+                    ? "/tarefas"
+                    : null;
 
             const content = (
               <div
