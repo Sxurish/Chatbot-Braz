@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { OFFICE_OAB } from "@/lib/constants";
+import { DEFAULT_MONTHLY_LIMIT_USD } from "@/lib/assistant/config";
 
 export type AiProvider = "mock" | "openai" | "anthropic" | "openrouter" | "google";
 
@@ -26,6 +27,11 @@ export interface AiData {
   urgency_keywords?: string[];
 }
 
+export interface AssistantData {
+  enabled?: boolean;
+  monthly_limit_usd?: number;
+}
+
 export interface Settings {
   office_name: string;
   privacy_policy_version: string;
@@ -33,6 +39,7 @@ export interface Settings {
   ai_model: string | null;
   office: OfficeData;
   ai: AiData;
+  assistant: Required<AssistantData>;
   updated_at?: string;
 }
 
@@ -65,6 +72,10 @@ const DEFAULT_SETTINGS: Settings = {
     ],
     urgency_keywords: ["audiência hoje", "preso", "ameaça", "prazo vencendo"],
   },
+  assistant: {
+    enabled: true,
+    monthly_limit_usd: DEFAULT_MONTHLY_LIMIT_USD,
+  },
 };
 
 /** Lê configurações do Supabase ou retorna o mock em modo demonstração. */
@@ -80,7 +91,11 @@ export async function getSettings(): Promise<Settings> {
 
   if (!data) return DEFAULT_SETTINGS;
 
-  const extra = (data.data ?? {}) as { office?: OfficeData; ai?: AiData };
+  const extra = (data.data ?? {}) as {
+    office?: OfficeData;
+    ai?: AiData;
+    assistant?: AssistantData;
+  };
   return {
     office_name: data.office_name ?? DEFAULT_SETTINGS.office_name,
     privacy_policy_version:
@@ -89,6 +104,7 @@ export async function getSettings(): Promise<Settings> {
     ai_model: data.ai_model ?? null,
     office: { ...DEFAULT_SETTINGS.office, ...(extra.office ?? {}) },
     ai: { ...DEFAULT_SETTINGS.ai, ...(extra.ai ?? {}) },
+    assistant: { ...DEFAULT_SETTINGS.assistant, ...(extra.assistant ?? {}) },
     updated_at: data.updated_at,
   };
 }

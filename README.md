@@ -12,6 +12,17 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ## ✨ O que já está implementado (Fases 1, 2, 4, 5, 6 + canais)
 
+### 🤖 Assistente virtual da equipe (fase 1: consulta)
+
+- Botão flutuante em todas as telas (Ctrl+K) e página **`/assistente`** com
+  histórico: perguntas sobre leads, clientes, casos, processos, prazos,
+  tarefas e agenda, respondidas pelo **Claude Haiku** com link para o registro.
+- Só leitura, com o login de quem pergunta (RLS). **Financeiro e contratos só
+  para Admin**, no banco e nas telas.
+- Limite de gasto mensal (US$ 50 por padrão) com aviso em 80%.
+- Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
+  `supabase/assistente-fase1.sql`.
+
 ### 📲 Integração de canais — WhatsApp e Instagram
 
 - **Webhooks** `/api/webhooks/whatsapp` e `/api/webhooks/instagram`:
@@ -144,6 +155,7 @@ supabase/
 npm install
 cp .env.example .env.local   # preencha os valores (ou deixe vazio p/ modo demo)
 npm run dev                  # http://localhost:3000
+npm test                     # testes automáticos (vitest)
 ```
 
 Rotas: `/` (landing) · `/atendimento` (chatbot) · `/login` · `/dashboard` (CRM).

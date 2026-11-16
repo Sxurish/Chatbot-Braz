@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   ScrollText,
   Gavel,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -29,12 +30,17 @@ interface NavItem {
   href: string;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Só aparece para administradores (dados financeiros). */
+  adminOnly?: boolean;
 }
 
 const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   {
     title: "Visão geral",
-    items: [{ href: "/dashboard", label: "Dashboard", icon: LayoutDashboard }],
+    items: [
+      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { href: "/assistente", label: "Assistente", icon: Sparkles },
+    ],
   },
   {
     title: "Atendimento",
@@ -50,7 +56,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/casos", label: "Casos", icon: Briefcase },
       { href: "/processos", label: "Processos", icon: Scale },
-      { href: "/contratos", label: "Contratos", icon: FileSignature },
+      { href: "/contratos", label: "Contratos", icon: FileSignature, adminOnly: true },
       { href: "/documentos", label: "Documentos", icon: FolderOpen },
     ],
   },
@@ -60,7 +66,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
       { href: "/tarefas", label: "Tarefas", icon: ListChecks },
       { href: "/notificacoes", label: "Notificações", icon: Bell },
-      { href: "/financeiro", label: "Financeiro", icon: Wallet },
+      { href: "/financeiro", label: "Financeiro", icon: Wallet, adminOnly: true },
     ],
   },
   {
@@ -77,8 +83,12 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items.filter((item) => !item.adminOnly || isAdmin),
+  })).filter((group) => group.items.length > 0);
 
   return (
     <aside className="hidden w-64 shrink-0 flex-col bg-brand-navy text-slate-200 lg:flex">
@@ -93,7 +103,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-6 overflow-y-auto px-3 py-6">
-        {NAV_GROUPS.map((group) => (
+        {groups.map((group) => (
           <div key={group.title}>
             <p className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               {group.title}

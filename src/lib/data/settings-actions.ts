@@ -103,6 +103,7 @@ export async function updateOfficeAction(
           },
         },
         ai: current.ai,
+        assistant: current.assistant,
       },
     });
 
@@ -166,11 +167,60 @@ export async function updateAiAction(
         legal_areas: splitList(parsed.data.legal_areas),
         urgency_keywords: splitList(parsed.data.urgency_keywords),
       },
+      assistant: current.assistant,
     },
   });
 
   if (error) return { error: "Falha ao salvar as configurações de IA." };
   await audit(supabase, "update_ai", admin.user.id);
+  revalidatePath("/configuracoes");
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Seção D — Assistente virtual da equipe
+// ---------------------------------------------------------------------------
+const assistantSchema = z.object({
+  enabled: z.boolean(),
+  monthly_limit_usd: z.coerce
+    .number({ error: "Informe o limite em dólares." })
+    .min(1, "O limite mínimo é US$ 1.")
+    .max(1000, "O limite máximo aqui é US$ 1.000."),
+});
+
+export async function updateAssistantAction(
+  _prev: ActionState,
+  formData: FormData
+): Promise<ActionState> {
+  const admin = await requireAdminAction();
+  if (!admin.ok) return { error: admin.error };
+
+  const parsed = assistantSchema.safeParse({
+    enabled: formData.get("enabled") === "on",
+    monthly_limit_usd: formData.get("monthly_limit_usd"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
+
+  const current = await getSettings();
+  const supabase = await createClient();
+  const { error } = await supabase.from("settings").upsert({
+    id: 1,
+    office_name: current.office_name,
+    privacy_policy_version: current.privacy_policy_version,
+    ai_provider: current.ai_provider,
+    ai_model: current.ai_model,
+    data: {
+      office: current.office,
+      ai: current.ai,
+      assistant: parsed.data,
+    },
+  });
+
+  if (error) return { error: "Falha ao salvar as configurações do assistente." };
+  await audit(supabase, "update_assistant", admin.user.id);
   revalidatePath("/configuracoes");
   return { ok: true };
 }

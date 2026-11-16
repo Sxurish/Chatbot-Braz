@@ -28,7 +28,7 @@ export async function listTasks(): Promise<Task[]> {
     .from("tasks")
     .select("*")
     .order("due_date", { ascending: true });
-  if (error || !data) return mockTasks;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Task[];
 }
 
@@ -39,7 +39,7 @@ export async function listAppointments(): Promise<Appointment[]> {
     .from("appointments")
     .select("*")
     .order("date", { ascending: true });
-  if (error || !data) return mockAppointments;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Appointment[];
 }
 
@@ -50,7 +50,7 @@ export async function listFollowUps(): Promise<FollowUp[]> {
     .from("follow_ups")
     .select("*")
     .order("scheduled_at", { ascending: true });
-  if (error || !data) return mockFollowUps;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as FollowUp[];
 }
 
@@ -61,7 +61,7 @@ export async function listNotifications(): Promise<AppNotification[]> {
     .from("notifications")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error || !data) return mockNotifications;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as AppNotification[];
 }
 
@@ -73,6 +73,6 @@ export async function listDocumentsByLead(leadId: string): Promise<LegalDocument
     .select("*")
     .eq("lead_id", leadId)
     .order("created_at", { ascending: false });
-  if (error || !data) return mockDocuments[leadId] ?? [];
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as LegalDocument[];
 }
