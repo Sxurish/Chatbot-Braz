@@ -37,7 +37,7 @@ export function LoginForm({
       <input type="hidden" name="redirectTo" value={redirectTo} />
 
       <div className="space-y-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-slate-700">
+        <label htmlFor="email" className="block text-sm leading-6 font-medium text-slate-700">
           E-mail
         </label>
         <Input
@@ -52,7 +52,7 @@ export function LoginForm({
       </div>
 
       <div className="space-y-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-slate-700">
+        <label htmlFor="password" className="block text-sm leading-6 font-medium text-slate-700">
           Senha
         </label>
         <Input

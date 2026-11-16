@@ -81,7 +81,7 @@ export function ReviewDialog({
         <input type="hidden" name="id" value={doc.id} />
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">
+          <label className="block text-sm leading-6 font-medium text-slate-700">
             Novo status *
           </label>
           <Select

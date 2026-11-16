@@ -19,7 +19,7 @@ import type { LegalStatus, Process } from "@/lib/types";
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit({ label }: { label: string }) {

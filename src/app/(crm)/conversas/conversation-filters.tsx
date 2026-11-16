@@ -29,7 +29,7 @@ export function ConversationFilters() {
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Canal</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Canal</label>
         <Select
           value={currentChannel}
           onChange={(e) => update("channel", e.target.value)}
@@ -43,7 +43,7 @@ export function ConversationFilters() {
         </Select>
       </div>
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Status</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Status</label>
         <Select
           value={currentStatus}
           onChange={(e) => update("status", e.target.value)}

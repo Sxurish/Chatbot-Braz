@@ -54,7 +54,7 @@ function Feedback({ state }: { state: ActionState }) {
 }
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <label className="text-sm font-medium text-slate-700">{children}</label>
+  <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>
 );
 
 type DialogKey = "task" | "followup" | "appointment" | "case" | null;

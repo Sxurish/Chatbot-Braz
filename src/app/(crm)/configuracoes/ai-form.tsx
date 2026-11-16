@@ -28,7 +28,7 @@ const PROVIDERS = [
 ] as const;
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit({ disabled }: { disabled: boolean }) {

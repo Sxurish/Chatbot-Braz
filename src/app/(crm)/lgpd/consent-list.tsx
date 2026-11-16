@@ -84,7 +84,7 @@ export function ConsentList({
     <>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-600">Canal</label>
+          <label className="block text-xs leading-6 font-medium text-slate-600">Canal</label>
           <Select
             value={currentChannel}
             onChange={(e) => update("channel", e.target.value)}
@@ -98,7 +98,7 @@ export function ConsentList({
           </Select>
         </div>
         <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-600">Decisão</label>
+          <label className="block text-xs leading-6 font-medium text-slate-600">Decisão</label>
           <Select
             value={currentDecision}
             onChange={(e) => update("decision", e.target.value)}
