@@ -5,11 +5,12 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { AreaBadge, LegalStatusBadge } from "@/components/crm/status-badge";
 import { listCases } from "@/lib/data/fase6";
-import { getUserName } from "@/lib/mock-data";
+import { getTeamNames } from "@/lib/data/team-names";
+import { nameOf } from "@/lib/team-names";
 import { formatDate } from "@/lib/utils";
 
 export default async function CasesPage() {
-  const cases = await listCases();
+  const [cases, names] = await Promise.all([listCases(), getTeamNames()]);
 
   return (
     <>
@@ -38,7 +39,7 @@ export default async function CasesPage() {
                     </p>
                   )}
                   <p className="mt-2 text-xs text-slate-400">
-                    {getUserName(c.assigned_to)} • Aberto em {formatDate(c.created_at)}
+                    {nameOf(names, c.assigned_to)} • Aberto em {formatDate(c.created_at)}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-2">

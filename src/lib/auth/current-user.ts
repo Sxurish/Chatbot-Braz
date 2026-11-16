@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getTeamMemberContext } from "@/lib/supabase/request-context";
@@ -17,6 +19,27 @@ const DEMO_USER: TeamUser = {
   created_at: "2025-01-10T12:00:00Z",
 };
 
+/**
+ * Sessão + perfil, lidos UMA vez por requisição: o layout, a guarda de acesso
+ * e a página reaproveitam o mesmo resultado (cada leitura é uma ida ao
+ * Supabase, e a troca de aba ficava lenta com as repetidas).
+ */
+export const getSessionProfile = cache(
+  async (): Promise<{ user: User | null; profile: TeamUser | null }> => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { user: null, profile: null };
+    const { data: profile } = await supabase
+      .from("users")
+      .select("id, name, email, role, active, last_login, created_at")
+      .eq("id", user.id)
+      .maybeSingle();
+    return { user, profile: (profile as TeamUser | null) ?? null };
+  }
+);
+
 export async function getCurrentUser(): Promise<TeamUser> {
   // Pedido pelo WhatsApp: a pessoa reconhecida pelo número (nunca o perfil de
   // demonstração, que é Admin).
@@ -25,19 +48,8 @@ export async function getCurrentUser(): Promise<TeamUser> {
 
   if (!isSupabaseConfigured()) return DEMO_USER;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { user, profile } = await getSessionProfile();
   if (!user) return DEMO_USER;
-
-  // Busca o perfil estendido na tabela public.users.
-  const { data: profile } = await supabase
-    .from("users")
-    .select("id, name, email, role, active, last_login, created_at")
-    .eq("id", user.id)
-    .maybeSingle();
 
   if (profile) return profile as TeamUser;
 
@@ -49,7 +61,8 @@ export async function getCurrentUser(): Promise<TeamUser> {
       user.email?.split("@")[0] ||
       "Usuário",
     email: user.email ?? "",
-    role: ((user.user_metadata?.role as UserRole) ?? "atendente") as UserRole,
+    // Sem perfil no banco: nunca confiar no papel dos metadados.
+    role: "visualizador" as UserRole,
     active: true,
     last_login: user.last_sign_in_at ?? null,
     created_at: user.created_at,

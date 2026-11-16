@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QuickCreate } from "@/components/crm/quick-create";
-import { getUserName } from "@/lib/mock-data";
+import { getTeamNames } from "@/lib/data/team-names";
+import { nameOf } from "@/lib/team-names";
 import { listAppointments } from "@/lib/data/crm";
 import { formatDate } from "@/lib/utils";
 
@@ -15,7 +16,7 @@ const MODALITY = {
 };
 
 export default async function AgendaPage() {
-  const appointments = await listAppointments();
+  const [appointments, names] = await Promise.all([listAppointments(), getTeamNames()]);
   return (
     <>
       <PageHeader
@@ -40,7 +41,7 @@ export default async function AgendaPage() {
                   <div>
                     <p className="font-medium text-slate-900">{appt.title}</p>
                     <p className="text-xs text-slate-500">
-                      {getUserName(appt.assigned_to)} • {appt.start_time}
+                      {nameOf(names, appt.assigned_to)} • {appt.start_time}
                       {appt.end_time ? `–${appt.end_time}` : ""}
                     </p>
                   </div>

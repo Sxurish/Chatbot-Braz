@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QuickCreate } from "@/components/crm/quick-create";
-import { getUserName } from "@/lib/mock-data";
+import { getTeamNames } from "@/lib/data/team-names";
+import { nameOf } from "@/lib/team-names";
 import { listTasks } from "@/lib/data/crm";
 import { formatDateTime } from "@/lib/utils";
 import type { TaskPriority, TaskStatus } from "@/lib/types";
@@ -24,7 +25,7 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 export default async function TasksPage() {
-  const tasks = await listTasks();
+  const [tasks, names] = await Promise.all([listTasks(), getTeamNames()]);
   return (
     <>
       <PageHeader
@@ -44,7 +45,7 @@ export default async function TasksPage() {
                   <Badge className={PRIORITY_TONE[task.priority]}>{task.priority}</Badge>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
-                  {getUserName(task.assigned_to)} • Prazo: {formatDateTime(task.due_date)}
+                  {nameOf(names, task.assigned_to)} • Prazo: {formatDateTime(task.due_date)}
                   {task.lead_id && (
                     <>
                       {" • "}
