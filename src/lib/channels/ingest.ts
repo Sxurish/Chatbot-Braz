@@ -4,9 +4,16 @@ import { hasServiceRole } from "@/lib/supabase/config";
 import { runTriage, type HistoryItem } from "@/lib/chatbot/engine";
 import { STANDARD_MESSAGES } from "@/lib/chatbot/system-prompt";
 import { buildConversationSummary } from "@/lib/chatbot/summary";
+import {
+  channelToSource,
+  safeArea,
+  safeCommercialStatus,
+  safeFinancialStatus,
+  safeLegalStatus,
+  safeUrgency,
+} from "@/lib/chatbot/normalize";
 import type { AiResponse } from "@/lib/chatbot/schema";
-import type { CommercialStatus, FinancialStatus, LegalArea, LegalStatus, Urgency } from "@/lib/types";
-import type { Channel, InboundMessage, IngestResult } from "./types";
+import type { InboundMessage, IngestResult } from "./types";
 
 const POLICY_VERSION = process.env.NEXT_PUBLIC_PRIVACY_POLICY_VERSION ?? "1.0.0";
 
@@ -21,18 +28,26 @@ interface TriageState {
   urgency?: string;
 }
 
-const AFFIRMATIVE = ["sim", "concordo", "aceito", "ok", "pode", "claro", "1"];
-const NEGATIVE = ["não", "nao", "discordo", "recuso", "2"];
-
-const VALID_AREAS: LegalArea[] = [
-  "penal", "civil", "administrativo", "previdenciario", "bancario", "imobiliario",
-  "trabalhista", "familia", "consumidor", "empresarial", "tributario", "contratos",
-  "lgpd", "outro", "nao_confirmada",
-];
-const safeArea = (v: string): LegalArea =>
-  VALID_AREAS.includes(v as LegalArea) ? (v as LegalArea) : "nao_confirmada";
-const safeUrgency = (v: string): Urgency =>
-  v === "alta" || v === "media" || v === "baixa" ? v : "baixa";
+/**
+ * Interpreta a resposta de consentimento LGPD.
+ * A negativa é avaliada PRIMEIRO e com fronteira de palavra: "não concordo"
+ * contém a palavra "concordo", então uma checagem ingênua de afirmativas
+ * registraria consentimento indevido.
+ */
+function matchConsent(text: string): "yes" | "no" | null {
+  const norm = text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .trim();
+  if (norm === "2" || /\b(nao|discordo|recuso|nego)\b/.test(norm)) {
+    return "no";
+  }
+  if (norm === "1" || /\b(sim|concordo|aceito|autorizo|de acordo|claro|pode)\b/.test(norm)) {
+    return "yes";
+  }
+  return null;
+}
 
 /**
  * Processa uma mensagem de entrada de qualquer canal (WhatsApp/Instagram).
@@ -76,21 +91,29 @@ export async function ingestMessage(msg: InboundMessage): Promise<IngestResult> 
   let nextState: TriageState = { ...state };
 
   if (state.stage === "declined") {
-    reply = STANDARD_MESSAGES.consentDeclined;
+    // Permite reconsentimento se o contato mudar de ideia.
+    if (matchConsent(text) === "yes") {
+      nextState.stage = "chatting";
+      nextState.consentAt = new Date().toISOString();
+      reply =
+        "Consentimento registrado. Para começar, descreva resumidamente a sua situação. Se puder, informe também seu nome e a cidade onde reside.";
+    } else {
+      reply = STANDARD_MESSAGES.consentDeclined;
+    }
   } else if (state.stage === "greeting") {
     // Primeira interação: saudação + aviso + pedido de consentimento.
     reply = `${STANDARD_MESSAGES.greeting}\n\n${STANDARD_MESSAGES.legalNotice}\n\n${STANDARD_MESSAGES.lgpdConsent} (responda SIM ou NÃO)`;
     nextState.stage = "awaiting_consent";
   } else if (state.stage === "awaiting_consent") {
-    const lower = text.toLowerCase();
-    if (AFFIRMATIVE.some((w) => lower.includes(w))) {
+    const consent = matchConsent(text);
+    if (consent === "no") {
+      nextState.stage = "declined";
+      reply = STANDARD_MESSAGES.consentDeclined;
+    } else if (consent === "yes") {
       nextState.stage = "chatting";
       nextState.consentAt = new Date().toISOString();
       reply =
         "Obrigado. Para começar, descreva resumidamente a sua situação. Se puder, informe também seu nome e a cidade onde reside.";
-    } else if (NEGATIVE.some((w) => lower.includes(w))) {
-      nextState.stage = "declined";
-      reply = STANDARD_MESSAGES.consentDeclined;
     } else {
       reply = `Para prosseguir, preciso do seu consentimento. ${STANDARD_MESSAGES.lgpdConsent} (responda SIM ou NÃO)`;
     }
@@ -156,6 +179,7 @@ async function getOrCreateConversation(db: DB, msg: InboundMessage) {
     .eq("external_contact_id", msg.contactId)
     .eq("status", "aberta")
     .order("created_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
 
   if (existing) {
@@ -235,10 +259,10 @@ async function createLead(
       case_summary: ai.resumo_caso || msg.text.slice(0, 1000),
       urgency: safeUrgency(ai.urgencia),
       urgency_reason: ai.motivo_urgencia || null,
-      commercial_status: (ai.status_comercial_sugerido || "novo_lead") as CommercialStatus,
-      legal_status: (ai.status_juridico_sugerido || "triagem_inicial") as LegalStatus,
-      financial_status: (ai.status_financeiro_sugerido || "sem_cobranca") as FinancialStatus,
-      source: msg.channel,
+      commercial_status: safeCommercialStatus(ai.status_comercial_sugerido),
+      legal_status: safeLegalStatus(ai.status_juridico_sugerido),
+      financial_status: safeFinancialStatus(ai.status_financeiro_sugerido),
+      source: channelToSource(msg.channel),
       consent_given: true,
       consent_at: consentAt ?? new Date().toISOString(),
       privacy_policy_version: POLICY_VERSION,

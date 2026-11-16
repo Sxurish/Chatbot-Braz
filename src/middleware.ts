@@ -1,7 +1,13 @@
-import { type NextRequest } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
+  // Rotas de API (chatbot público e webhooks da Meta) não usam sessão de
+  // usuário — evita o custo de auth.getUser() por request e mantém a
+  // resposta rápida exigida pelos webhooks.
+  if (request.nextUrl.pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
   return updateSession(request);
 }
 

@@ -2,43 +2,14 @@ import "server-only";
 import { createServiceClient } from "@/lib/supabase/server";
 import { hasServiceRole } from "@/lib/supabase/config";
 import type { AiResponse, ConversationSummary } from "@/lib/chatbot/schema";
-import type {
-  CommercialStatus,
-  FinancialStatus,
-  LegalArea,
-  LegalStatus,
-  Urgency,
-} from "@/lib/types";
-
-const VALID_AREAS: LegalArea[] = [
-  "penal",
-  "civil",
-  "administrativo",
-  "previdenciario",
-  "bancario",
-  "imobiliario",
-  "trabalhista",
-  "familia",
-  "consumidor",
-  "empresarial",
-  "tributario",
-  "contratos",
-  "lgpd",
-  "outro",
-  "nao_confirmada",
-];
-
-function safeArea(value: string): LegalArea {
-  return VALID_AREAS.includes(value as LegalArea)
-    ? (value as LegalArea)
-    : "nao_confirmada";
-}
-
-function safeUrgency(value: string): Urgency {
-  return value === "alta" || value === "media" || value === "baixa"
-    ? value
-    : "baixa";
-}
+import {
+  channelToSource,
+  safeArea,
+  safeCommercialStatus,
+  safeFinancialStatus,
+  safeLegalStatus,
+  safeUrgency,
+} from "@/lib/chatbot/normalize";
 
 export interface PersistLeadInput {
   ai: AiResponse;
@@ -92,13 +63,10 @@ export async function persistLeadFromChat(
       case_summary: ai.resumo_caso || fullMessage.slice(0, 1000),
       urgency: safeUrgency(ai.urgencia),
       urgency_reason: ai.motivo_urgencia || null,
-      commercial_status: (ai.status_comercial_sugerido ||
-        "novo_lead") as CommercialStatus,
-      legal_status: (ai.status_juridico_sugerido ||
-        "triagem_inicial") as LegalStatus,
-      financial_status: (ai.status_financeiro_sugerido ||
-        "sem_cobranca") as FinancialStatus,
-      source: consent.channel || "chatbot",
+      commercial_status: safeCommercialStatus(ai.status_comercial_sugerido),
+      legal_status: safeLegalStatus(ai.status_juridico_sugerido),
+      financial_status: safeFinancialStatus(ai.status_financeiro_sugerido),
+      source: channelToSource(consent.channel),
       consent_given: consent.given,
       consent_at: consent.at,
       privacy_policy_version: consent.policyVersion,
