@@ -86,7 +86,7 @@ function AssistantPanel({ pathname, onClose }: { pathname: string; onClose: () =
             </span>
             <div className="leading-tight">
               <p className="text-sm font-semibold">Assistente</p>
-              <p className="text-[11px] text-brand-gold">Consulta rápida ao CRM</p>
+              <p className="text-[11px] text-brand-gold">Consultas e cadastros no CRM</p>
             </div>
           </div>
           <div className="flex items-center gap-1">

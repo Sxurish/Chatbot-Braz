@@ -22,6 +22,8 @@ export interface StoredMessage {
   role: "user" | "assistant";
   content: string;
   tools_used: ToolUseRecord[];
+  /** Arquivos enviados junto com a pergunta (fase 2). */
+  attachments: { id: string; name: string }[];
   created_at: string;
 }
 
@@ -206,14 +208,22 @@ export async function listMessages(
     return (demo().messages.get(conversationId) ?? []).slice(-limit);
   }
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("assistant_messages")
-    .select("id, role, content, tools_used, created_at")
-    .eq("conversation_id", conversationId)
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  return ((data ?? []) as StoredMessage[]).reverse();
+  const query = (columns: string) =>
+    supabase
+      .from("assistant_messages")
+      .select(columns)
+      .eq("conversation_id", conversationId)
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+  let { data, error } = await query("id, role, content, tools_used, attachments, created_at");
+  if (error?.code === "42703") {
+    // Banco ainda sem a fase 2 (coluna attachments): segue sem os anexos.
+    ({ data, error } = await query("id, role, content, tools_used, created_at"));
+  }
+  return ((data ?? []) as unknown as StoredMessage[])
+    .map((m) => ({ ...m, attachments: m.attachments ?? [] }))
+    .reverse();
 }
 
 export interface NewMessage {
@@ -221,6 +231,7 @@ export interface NewMessage {
   content: string;
   pageContext?: string | null;
   toolsUsed?: ToolUseRecord[];
+  attachments?: { id: string; name: string }[];
   model?: string;
   usage?: UsageTotals;
   costUsd?: number;
@@ -242,6 +253,7 @@ export async function saveMessage(
       role: msg.role,
       content: msg.content,
       tools_used: msg.toolsUsed ?? [],
+      attachments: msg.attachments ?? [],
       created_at: now,
     });
     conv.updated_at = now;
@@ -269,6 +281,8 @@ export async function saveMessage(
     cache_read_tokens: msg.usage?.cacheRead ?? 0,
     cache_write_tokens: msg.usage?.cacheWrite ?? 0,
     cost_usd: msg.costUsd ?? 0,
+    // Só manda a coluna nova quando há anexo (banco sem a fase 2 continua funcionando).
+    ...(msg.attachments?.length ? { attachments: msg.attachments } : {}),
   });
   if (error) {
     console.error("[assistente] falha ao gravar mensagem", error.message);

@@ -1,10 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { AlertTriangle, ArrowUp, Info, Loader2, Sparkles, Square } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowUp,
+  FileText,
+  Image as ImageIcon,
+  Info,
+  Loader2,
+  Paperclip,
+  Sparkles,
+  Square,
+  Upload,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/assistant/markdown";
+import { DraftCard } from "@/components/assistant/draft-card";
 import type { useAssistant } from "@/components/assistant/use-assistant";
+import { ACCEPT_ATTRIBUTE, checkAttachment } from "@/lib/assistant/attachment-rules";
 
 type AssistantApi = ReturnType<typeof useAssistant>;
 
@@ -31,10 +45,14 @@ export function AssistantChat({
   pagePath: string | null;
   variant: "panel" | "page";
 }) {
-  const { turns, busy, toolLabel, status, statusError, budgetNotice, send, stop } = api;
+  const { turns, busy, toolLabel, status, statusError, budgetNotice, send, stop, updateDraft } = api;
   const [draft, setDraft] = useState("");
+  const [file, setFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -48,14 +66,62 @@ export function AssistantChat({
   const notConfigured = status && !status.configured;
   const disabled = Boolean(statusError || notConfigured || status?.enabled === false || status?.budget.level === "blocked");
 
+  const canAttach = !disabled && status?.canWrite !== false && status?.documentsAllowed !== false;
+
+  const pickFile = (f: File | null | undefined) => {
+    if (!f) return;
+    if (!canAttach) {
+      setFileError(
+        status?.documentsAllowed === false
+          ? "Leitura de documentos pausada: o gasto do mês passou do limite."
+          : "Anexos não estão disponíveis para o seu acesso."
+      );
+      return;
+    }
+    // Imagens grandes são reduzidas antes de enviar; só o PDF tem limite rígido aqui.
+    const problem = checkAttachment({ name: f.name, type: f.type, size: f.type.startsWith("image/") ? 1 : f.size });
+    if (problem) {
+      setFileError(problem);
+      return;
+    }
+    setFileError(null);
+    setFile(f);
+    inputRef.current?.focus();
+  };
+
   const submit = () => {
-    if (!draft.trim() || busy || disabled) return;
-    void send(draft);
+    if ((!draft.trim() && !file) || busy || disabled) return;
+    void send(draft, file);
     setDraft("");
+    setFile(null);
+    setFileError(null);
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div
+      className="relative flex h-full min-h-0 flex-col"
+      onDragOver={(e) => {
+        if (!canAttach || !e.dataTransfer.types.includes("Files")) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setDragging(false);
+      }}
+      onDrop={(e) => {
+        if (!canAttach) return;
+        e.preventDefault();
+        setDragging(false);
+        pickFile(e.dataTransfer.files?.[0]);
+      }}
+    >
+      {dragging && (
+        <div className="pointer-events-none absolute inset-2 z-10 flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-brand-primary/50 bg-white/90 text-sm font-medium text-brand-primary">
+          <Upload className="h-6 w-6" />
+          Solte o PDF ou o print aqui
+        </div>
+      )}
       <div ref={scrollRef} className={cn("flex-1 overflow-y-auto", variant === "page" ? "px-4 py-6 sm:px-8" : "px-4 py-4")}>
         {turns.length === 0 ? (
           <div className={cn("mx-auto flex max-w-xl flex-col", variant === "page" ? "pt-10" : "pt-4")}>
@@ -66,6 +132,8 @@ export function AssistantChat({
             <p className="mt-1 text-sm text-slate-500">
               Pergunte sobre leads, clientes, casos, processos, prazos, tarefas e agenda. Eu consulto o CRM
               e respondo com o link do registro.
+              {status?.canWrite !== false &&
+                " Também preparo cadastros: escreva o que quer cadastrar ou anexe um PDF ou print (pode arrastar para cá) e confira antes de confirmar."}
             </p>
             {!disabled && (
               <div className="mt-5 flex flex-col gap-2">
@@ -87,8 +155,26 @@ export function AssistantChat({
           <div className="mx-auto flex max-w-3xl flex-col gap-4">
             {turns.map((t) =>
               t.role === "user" ? (
-                <div key={t.id} className="ml-auto max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-br-sm bg-brand-primary px-4 py-2 text-sm text-white">
-                  {t.content}
+                <div key={t.id} className="ml-auto flex max-w-[85%] flex-col items-end gap-1">
+                  {t.attachments?.map((a) => (
+                    <span
+                      key={a.id + a.name}
+                      className="inline-flex max-w-full items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700"
+                    >
+                      {/\.pdf$/i.test(a.name) ? (
+                        <FileText className="h-3.5 w-3.5 shrink-0 text-red-600" />
+                      ) : (
+                        <ImageIcon className="h-3.5 w-3.5 shrink-0 text-brand-primary" />
+                      )}
+                      <span className="truncate">{a.name}</span>
+                      {a.id === "enviando" && <Loader2 className="h-3 w-3 animate-spin" />}
+                    </span>
+                  ))}
+                  {t.content && (
+                    <div className="whitespace-pre-wrap rounded-2xl rounded-br-sm bg-brand-primary px-4 py-2 text-sm text-white">
+                      {t.content}
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div key={t.id} className="flex max-w-[95%] gap-3">
@@ -115,6 +201,14 @@ export function AssistantChat({
                         {toolLabel}…
                       </p>
                     )}
+                    {t.drafts?.map((d) => (
+                      <DraftCard
+                        key={d.id}
+                        draft={d}
+                        readOnly={status?.canWrite === false}
+                        onChange={(change) => updateDraft(d.id, change)}
+                      />
+                    ))}
                   </div>
                 </div>
               )
@@ -147,6 +241,31 @@ export function AssistantChat({
               {budgetNotice}
             </p>
           )}
+          {fileError && (
+            <p role="alert" className="mb-2 flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              {fileError}
+            </p>
+          )}
+          {file && (
+            <div className="mb-2 flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              {file.type === "application/pdf" ? (
+                <FileText className="h-4 w-4 shrink-0 text-red-600" />
+              ) : (
+                <ImageIcon className="h-4 w-4 shrink-0 text-brand-primary" />
+              )}
+              <span className="min-w-0 flex-1 truncate">{file.name}</span>
+              <span className="shrink-0 text-slate-400">{(file.size / 1024 / 1024).toFixed(1)} MB</span>
+              <button
+                type="button"
+                onClick={() => setFile(null)}
+                className="shrink-0 text-slate-400 hover:text-slate-700"
+                aria-label="Tirar arquivo"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          )}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -154,6 +273,30 @@ export function AssistantChat({
             }}
             className="flex items-end gap-2 rounded-xl border border-slate-200 bg-white p-2 focus-within:border-brand-primary/50 focus-within:ring-2 focus-within:ring-brand-primary/10"
           >
+            {status?.canWrite !== false && (
+              <>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept={ACCEPT_ATTRIBUTE}
+                  className="hidden"
+                  onChange={(e) => {
+                    pickFile(e.target.files?.[0]);
+                    e.target.value = "";
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => fileRef.current?.click()}
+                  disabled={!canAttach || busy}
+                  aria-label="Anexar PDF ou print"
+                  title="Anexar PDF ou print"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-800 disabled:opacity-40"
+                >
+                  <Paperclip className="h-4 w-4" />
+                </button>
+              </>
+            )}
             <label htmlFor={`assistente-${variant}`} className="sr-only">
               Pergunta para o assistente
             </label>
@@ -162,6 +305,13 @@ export function AssistantChat({
               ref={inputRef}
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
+              onPaste={(e) => {
+                const pasted = Array.from(e.clipboardData.files).find((f) => f.type.startsWith("image/"));
+                if (pasted) {
+                  e.preventDefault();
+                  pickFile(new File([pasted], pasted.name || "print-colado.png", { type: pasted.type }));
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();
@@ -171,7 +321,13 @@ export function AssistantChat({
               rows={1}
               maxLength={4000}
               disabled={disabled}
-              placeholder={disabled ? "Assistente indisponível" : "Pergunte sobre leads, processos, prazos…"}
+              placeholder={
+                disabled
+                  ? "Assistente indisponível"
+                  : file
+                    ? "O que fazer com o arquivo? (opcional)"
+                    : "Pergunte ou peça um cadastro…"
+              }
               className="max-h-40 min-h-9 flex-1 resize-none bg-transparent px-2 py-1.5 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
             />
             {busy ? (
@@ -187,7 +343,7 @@ export function AssistantChat({
               <button
                 type="submit"
                 aria-label="Enviar pergunta"
-                disabled={!draft.trim() || disabled}
+                disabled={(!draft.trim() && !file) || disabled}
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-primary text-white hover:bg-brand-primary/90 disabled:opacity-40"
               >
                 <ArrowUp className="h-4 w-4" />
@@ -196,7 +352,7 @@ export function AssistantChat({
           </form>
           <p className="mt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
             <Info className="h-3 w-3 shrink-0" />
-            O assistente só consulta o CRM. Confira prazos na intimação e no sistema do tribunal.
+            Nada é gravado sem você confirmar. Confira prazos na intimação e no sistema do tribunal.
           </p>
         </div>
       </div>
