@@ -2,16 +2,18 @@ import Link from "next/link";
 import { Gavel, Info } from "lucide-react";
 import { LoginForm } from "./login-form";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { OFFICE_OAB } from "@/lib/constants";
 
 export const metadata = {
   title: "Acessar CRM — Dr. Jean Braz",
 };
 
-export default function LoginPage({
-  searchParams,
-}: {
-  searchParams: { redirectTo?: string };
-}) {
+export default async function LoginPage(
+  props: {
+    searchParams: Promise<{ redirectTo?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const demoMode = !isSupabaseConfigured();
   const redirectTo = searchParams.redirectTo ?? "/dashboard";
 
@@ -23,7 +25,7 @@ export default function LoginPage({
             <Gavel className="h-7 w-7" />
           </div>
           <h1 className="text-xl font-semibold text-white">Dr. Jean Braz</h1>
-          <p className="text-sm text-brand-gold">CRM Jurídico • OAB/SP</p>
+          <p className="text-sm text-brand-gold">CRM Jurídico • {OFFICE_OAB}</p>
         </div>
 
         <div className="rounded-2xl bg-white p-8 shadow-xl">

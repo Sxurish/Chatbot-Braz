@@ -42,7 +42,7 @@ export async function listConversations(
   const page = Math.max(1, options.page ?? 1);
   if (!isSupabaseConfigured()) return { ...EMPTY_LIST, page };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("conversations")
     .select(
@@ -90,7 +90,7 @@ export async function listConversations(
 }
 
 async function fetchLastMessages(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   conversationIds: string[]
 ): Promise<Map<string, { snippet: string; created_at: string }>> {
   const result = new Map<string, { snippet: string; created_at: string }>();
@@ -121,7 +121,7 @@ export async function getConversation(
 ): Promise<ConversationDetail | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("conversations")
     .select(
@@ -152,7 +152,7 @@ export async function listMessages(
 ): Promise<MessageRow[]> {
   if (!isSupabaseConfigured()) return [];
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("messages")
     .select("id, sender_type, content, metadata, created_at")

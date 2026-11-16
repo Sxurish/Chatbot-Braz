@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -20,7 +20,7 @@ import type { Contract, ContractStatus } from "@/lib/types";
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit({ label }: { label: string }) {
@@ -78,7 +78,7 @@ export function ContractDialog({
   onClose: () => void;
 }) {
   const isEdit = Boolean(contract);
-  const [state, action] = useFormState(
+  const [state, action] = useActionState(
     isEdit ? updateContractAction : createContractAction,
     initial
   );

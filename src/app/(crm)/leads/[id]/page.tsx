@@ -29,11 +29,12 @@ import { listDocumentsByLead } from "@/lib/data/crm";
 import { listTemplates } from "@/lib/data/templates-read";
 import { formatDate, formatDateTime } from "@/lib/utils";
 
-export default async function LeadDetailPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function LeadDetailPage(
+  props: {
+    params: Promise<{ id: string }>;
+  }
+) {
+  const params = await props.params;
   const lead = await getLead(params.id);
   if (!lead) notFound();
 

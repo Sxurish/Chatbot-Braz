@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { STANDARD_MESSAGES } from "@/lib/chatbot/system-prompt";
 import type { AiResponse } from "@/lib/chatbot/schema";
 import { cn } from "@/lib/utils";
+import { OFFICE_OAB } from "@/lib/constants";
 
 type Phase = "consent" | "chatting" | "declined";
 
@@ -172,7 +173,7 @@ export function ChatWidget() {
         <div className="leading-tight">
           <p className="text-sm font-semibold">Assistente virtual — Dr. Jean Braz</p>
           <p className="flex items-center gap-1 text-[11px] text-brand-gold">
-            <ShieldCheck className="h-3 w-3" /> Pré-atendimento • LGPD • OAB/SP
+            <ShieldCheck className="h-3 w-3" /> Pré-atendimento • LGPD • {OFFICE_OAB}
           </p>
         </div>
       </div>

@@ -80,7 +80,7 @@ export function DsrList({
     <>
       <div className="mb-4 flex flex-wrap items-end gap-3">
         <div className="space-y-1">
-          <label className="text-xs font-medium text-slate-600">Status</label>
+          <label className="block text-xs leading-6 font-medium text-slate-600">Status</label>
           <Select
             value={currentStatus}
             onChange={(e) => update(e.target.value)}

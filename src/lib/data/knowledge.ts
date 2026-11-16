@@ -17,7 +17,7 @@ export const KNOWLEDGE_PROMPT_BUDGET = 4000;
 export async function listKnowledge(): Promise<KnowledgeEntry[]> {
   if (!isSupabaseConfigured()) return [];
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("knowledge_base")
     .select("id, title, category, content, is_active, created_at, updated_at")
@@ -31,7 +31,7 @@ export async function listKnowledge(): Promise<KnowledgeEntry[]> {
 export async function getKnowledge(id: string): Promise<KnowledgeEntry | null> {
   if (!isSupabaseConfigured()) return null;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("knowledge_base")
     .select("id, title, category, content, is_active, created_at, updated_at")
@@ -50,7 +50,7 @@ export async function getKnowledge(id: string): Promise<KnowledgeEntry | null> {
 export async function getActiveKnowledgeForPrompt(): Promise<string> {
   if (!isSupabaseConfigured()) return "";
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("knowledge_base")
     .select("title, category, content")

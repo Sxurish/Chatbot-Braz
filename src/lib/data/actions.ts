@@ -17,7 +17,7 @@ const DEMO_NOTICE =
 
 /** Registra uma ação no log de auditoria (best-effort). */
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   entityType: string,
   entityId: string | null
@@ -62,7 +62,7 @@ export async function createTaskAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
     .insert({
@@ -110,7 +110,7 @@ export async function createFollowUpAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("follow_ups")
     .insert({
@@ -161,7 +161,7 @@ export async function createAppointmentAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("appointments")
     .insert({
@@ -195,7 +195,7 @@ export async function convertLeadToClientAction(
   if (!leadId) return { error: "Lead inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: lead } = await supabase
     .from("leads")
     .select("*")
@@ -208,6 +208,7 @@ export async function convertLeadToClientAction(
     .from("clients")
     .select("id")
     .eq("lead_id", leadId)
+    .limit(1)
     .maybeSingle();
 
   if (!existing) {
@@ -247,7 +248,7 @@ export async function createCaseFromLeadAction(
   if (!title || title.length < 2) return { error: "Informe um título para o caso." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: lead } = await supabase
     .from("leads")
     .select("*")

@@ -1,6 +1,6 @@
 # Chatbot-Braz — Dashboard/CRM Jurídico com Chatbot Inteligente
 
-Sistema web para o escritório do **Dr. Jean Braz** (OAB/SP) composto por um
+Sistema web para o escritório do **Dr. Jean Braz** (OAB/SP 459.159) composto por um
 **chatbot de pré-atendimento jurídico** (triagem, classificação e coleta de
 informações em conformidade com a LGPD) e um **CRM/Dashboard interno** para a
 gestão de leads, clientes, casos, documentos, agenda e tarefas.
@@ -12,17 +12,19 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ## ✨ O que já está implementado (Fases 1, 2, 4, 5, 6 + canais)
 
-### 📲 Integração de canais — WhatsApp (Instagram preparado)
+### 📲 Integração de canais — WhatsApp e Instagram
 
-- **Webhook do WhatsApp** (`/api/webhooks/whatsapp`): verificação (GET),
-  validação de assinatura `X-Hub-Signature-256` e recebimento de mensagens.
+- **Webhooks** `/api/webhooks/whatsapp` e `/api/webhooks/instagram`:
+  verificação (GET), validação de assinatura `X-Hub-Signature-256` e
+  recebimento de mensagens.
 - **Motor de triagem reutilizável** (`src/lib/chatbot/engine.ts`) compartilhado
   entre o chat do site e os canais de mensageria.
 - **Camada de ingestão channel-agnostic** (`src/lib/channels/ingest.ts`):
   consentimento LGPD via texto (SIM/NÃO), estado da conversa por contato,
   deduplicação de webhooks, criação de **lead + conversa + consentimento +
   notificação** e resumo interno — tudo cai no CRM.
-- Instagram usa a mesma Graph API e já está previsto (`channel: "instagram"`).
+- **Página `/conversas`** real: lista os atendimentos por canal (site,
+  WhatsApp, Instagram) com última mensagem e link para o lead.
 - Guia completo em **`docs/INTEGRACAO-CANAIS.md`**.
 
 ### 💼 Fase 6 — Clientes, casos, processos, contratos e financeiro
@@ -94,12 +96,12 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 | Camada        | Tecnologia                                   |
 | ------------- | -------------------------------------------- |
-| Front-end     | Next.js 14 (App Router) + React 18           |
-| Linguagem     | TypeScript                                   |
-| Estilo        | Tailwind CSS (componentes estilo shadcn/ui)  |
+| Front-end     | Next.js 16 (App Router) + React 19           |
+| Linguagem     | TypeScript 6                                 |
+| Estilo        | Tailwind CSS 4 (componentes estilo shadcn/ui)|
 | Ícones        | lucide-react                                 |
-| Gráficos      | Recharts                                     |
-| Validação     | Zod                                          |
+| Gráficos      | Recharts 3                                   |
+| Validação     | Zod 4                                        |
 | Banco / Auth  | Supabase (PostgreSQL, Auth, Storage)         |
 | IA            | OpenAI / Anthropic / Gemini / OpenRouter     |
 | Deploy        | Vercel                                       |
@@ -109,8 +111,8 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 ## 📁 Estrutura de pastas
 
 ```
-middleware.ts                                    # proteção de rotas + sessão
 src/
+├── middleware.ts                                # proteção de rotas + sessão
 ├── app/
 │   ├── layout.tsx, globals.css, page.tsx        # raiz + landing
 │   ├── login/                                    # autenticação (Server Action)

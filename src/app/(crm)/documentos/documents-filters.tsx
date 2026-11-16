@@ -66,7 +66,7 @@ export function DocumentsFilters() {
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Buscar</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Buscar</label>
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <Input
@@ -80,7 +80,7 @@ export function DocumentsFilters() {
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Categoria</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Categoria</label>
         <Select
           value={currentCategory}
           onChange={(e) => update("category", e.target.value)}
@@ -97,7 +97,7 @@ export function DocumentsFilters() {
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Revisão</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Revisão</label>
         <Select
           value={currentReview}
           onChange={(e) => update("review", e.target.value)}
@@ -114,7 +114,7 @@ export function DocumentsFilters() {
       </div>
 
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Vínculo</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Vínculo</label>
         <Select
           value={currentLink}
           onChange={(e) => update("link", e.target.value)}

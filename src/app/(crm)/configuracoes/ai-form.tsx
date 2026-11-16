@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2, AlertCircle, Info, CheckCircle2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +28,7 @@ const PROVIDERS = [
 ] as const;
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit({ disabled }: { disabled: boolean }) {
@@ -70,7 +71,7 @@ export function AiForm({
   apiKeyConfigured: boolean;
   readOnly: boolean;
 }) {
-  const [state, action] = useFormState(updateAiAction, initial);
+  const [state, action] = useActionState(updateAiAction, initial);
 
   return (
     <Card>

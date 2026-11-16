@@ -13,7 +13,7 @@ export async function listTemplates(
 ): Promise<DocumentTemplate[]> {
   if (!isSupabaseConfigured()) return [];
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("document_templates")
     .select("*")
@@ -28,7 +28,7 @@ export async function getTemplate(
   id: string
 ): Promise<DocumentTemplate | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("document_templates")
     .select("*")
@@ -42,7 +42,7 @@ export async function downloadTemplateFile(
   storagePath: string
 ): Promise<Buffer | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.storage
     .from(TEMPLATE_BUCKET)
     .download(storagePath);

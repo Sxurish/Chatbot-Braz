@@ -21,7 +21,7 @@ export const aiResponseSchema = z.object({
       melhor_horario: z.string().default(""),
       ja_e_cliente: z.boolean().default(false),
     })
-    .default({}),
+    .prefault({}),
   resumo_caso: z.string().default(""),
   documentos_sugeridos: z.array(z.string()).default([]),
   documentos_mencionados: z.array(z.string()).default([]),
@@ -109,7 +109,7 @@ export const chatRequestSchema = z.object({
     .object({
       area: z.string().optional(),
       urgency: z.string().optional(),
-      collected: z.record(z.unknown()).optional(),
+      collected: z.record(z.string(), z.unknown()).optional(),
     })
     .optional(),
   // Consentimento LGPD coletado no client antes da troca de mensagens.

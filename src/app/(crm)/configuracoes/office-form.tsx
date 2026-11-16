@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2, AlertCircle, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +21,7 @@ import type { Settings } from "@/lib/data/settings";
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit({ disabled }: { disabled: boolean }) {
@@ -61,7 +62,7 @@ export function OfficeForm({
   settings: Settings;
   readOnly: boolean;
 }) {
-  const [state, action] = useFormState(updateOfficeAction, initial);
+  const [state, action] = useActionState(updateOfficeAction, initial);
   const o = settings.office;
   const h = o.business_hours;
 
@@ -87,7 +88,7 @@ export function OfficeForm({
               </div>
               <div className="space-y-1.5">
                 <FieldLabel>OAB do responsável</FieldLabel>
-                <Input name="oab" defaultValue={o.oab} placeholder="OAB/SP 000.000" />
+                <Input name="oab" defaultValue={o.oab} placeholder="OAB/SP 459.159" />
               </div>
             </div>
 

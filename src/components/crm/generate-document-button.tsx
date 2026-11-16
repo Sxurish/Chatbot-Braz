@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useMemo, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   AlertCircle,
   CheckCircle2,
@@ -27,7 +27,7 @@ import {
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit() {
@@ -83,19 +83,14 @@ export function GenerateDocumentButton({
 }) {
   const [open, setOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string>("");
-  const [state, action] = useFormState(generateDocumentAction, initial);
+  const [state, action] = useActionState(generateDocumentAction, initial);
 
+  // Sem escolha explícita, usa o primeiro template ativo por padrão.
+  const effectiveId = selectedId || templates[0]?.id || "";
   const selected = useMemo(
-    () => templates.find((t) => t.id === selectedId) ?? null,
-    [templates, selectedId]
+    () => templates.find((t) => t.id === effectiveId) ?? null,
+    [templates, effectiveId]
   );
-
-  // Quando abrir, seleciona o primeiro template ativo por padrão.
-  useEffect(() => {
-    if (open && !selectedId && templates.length > 0) {
-      setSelectedId(templates[0].id);
-    }
-  }, [open, selectedId, templates]);
 
   // Placeholders que o usuário precisa preencher manualmente.
   const manualPlaceholders = useMemo(
@@ -126,7 +121,7 @@ export function GenerateDocumentButton({
             <FieldLabel>Template *</FieldLabel>
             <Select
               name="template_id"
-              value={selectedId}
+              value={effectiveId}
               onChange={(e) => setSelectedId(e.target.value)}
               required
             >

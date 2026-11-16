@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Gavel, MessageSquare, ShieldCheck, LayoutDashboard, ArrowRight } from "lucide-react";
+import { OFFICE_OAB } from "@/lib/constants";
 
 const AREAS = [
   "Direito Penal",
@@ -20,7 +21,7 @@ export default function HomePage() {
           </div>
           <div className="leading-tight">
             <p className="font-semibold">Dr. Jean Braz</p>
-            <p className="text-xs text-brand-gold">Advocacia • OAB/SP</p>
+            <p className="text-xs text-brand-gold">Advocacia • {OFFICE_OAB}</p>
           </div>
         </div>
         <Link
@@ -37,7 +38,7 @@ export default function HomePage() {
             <span className="inline-flex items-center gap-2 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-3 py-1 text-xs font-medium text-brand-gold">
               <ShieldCheck className="h-3.5 w-3.5" /> Atendimento ético e em conformidade com a LGPD
             </span>
-            <h1 className="mt-6 text-4xl font-bold leading-tight lg:text-5xl">
+            <h1 className="mt-6 text-4xl font-bold leading-tight lg:text-5xl lg:leading-none">
               Atendimento jurídico moderno, técnico e estratégico
             </h1>
             <p className="mt-4 max-w-lg text-slate-300">

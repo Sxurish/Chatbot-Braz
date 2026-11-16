@@ -33,10 +33,11 @@ function relativeOrDate(iso: string): string {
 }
 
 interface SearchParams {
-  searchParams: { channel?: string; status?: string; page?: string };
+  searchParams: Promise<{ channel?: string; status?: string; page?: string }>;
 }
 
-export default async function Page({ searchParams }: SearchParams) {
+export default async function Page(props: SearchParams) {
+  const searchParams = await props.searchParams;
   const page = Math.max(1, Number(searchParams.page) || 1);
   const channel = searchParams.channel || null;
   const status = searchParams.status || null;

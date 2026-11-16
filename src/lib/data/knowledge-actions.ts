@@ -16,7 +16,7 @@ const DEMO_NOTICE =
   "Modo demonstração: configure o Supabase para gravar os dados de verdade.";
 
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   entityId: string | null,
   userId: string | null
@@ -39,7 +39,7 @@ const entrySchema = z.object({
     .min(2, "Informe um título com pelo menos 2 caracteres.")
     .max(200, "Título muito longo (máx. 200)."),
   category: z.enum(["mensagem_padrao", "documento_area", "glossario"], {
-    errorMap: () => ({ message: "Selecione uma categoria válida." }),
+    error: "Selecione uma categoria válida.",
   }),
   content: z
     .string()
@@ -69,7 +69,7 @@ export async function createKnowledgeAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("knowledge_base")
     .insert({
@@ -111,7 +111,7 @@ export async function updateKnowledgeAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("knowledge_base")
     .update({
@@ -143,7 +143,7 @@ export async function toggleKnowledgeAction(
   if (!id) return { error: "Entrada inválida." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("knowledge_base")
     .update({ is_active: next })
@@ -169,7 +169,7 @@ export async function deleteKnowledgeAction(
   if (!id) return { error: "Entrada inválida." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("knowledge_base").delete().eq("id", id);
 
   if (error) return { error: "Falha ao excluir a entrada." };

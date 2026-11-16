@@ -21,10 +21,11 @@ const dateFmt = new Intl.DateTimeFormat("pt-BR", {
 });
 
 interface Params {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }
 
-export default async function Page({ params }: Params) {
+export default async function Page(props: Params) {
+  const params = await props.params;
   const conversation = await getConversation(params.id);
   if (!conversation) notFound();
 

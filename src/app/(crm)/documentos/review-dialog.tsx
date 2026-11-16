@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -58,7 +58,7 @@ export function ReviewDialog({
   doc: DocumentRow | null;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(updateReviewStatusAction, initial);
+  const [state, action] = useActionState(updateReviewStatusAction, initial);
 
   useEffect(() => {
     if (state.ok) {
@@ -81,7 +81,7 @@ export function ReviewDialog({
         <input type="hidden" name="id" value={doc.id} />
 
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-slate-700">
+          <label className="block text-sm leading-6 font-medium text-slate-700">
             Novo status *
           </label>
           <Select

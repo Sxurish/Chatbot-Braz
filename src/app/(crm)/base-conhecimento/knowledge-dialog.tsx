@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ import {
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit({ label }: { label: string }) {
@@ -65,7 +65,7 @@ export function KnowledgeDialog({
 }: KnowledgeDialogProps) {
   const isEdit = Boolean(entry);
   const action = isEdit ? updateKnowledgeAction : createKnowledgeAction;
-  const [state, formAction] = useFormState(action, initial);
+  const [state, formAction] = useActionState(action, initial);
 
   useEffect(() => {
     if (state.ok) {
@@ -141,7 +141,7 @@ export function KnowledgeDialog({
             name="is_active"
             value="true"
             defaultChecked={entry?.is_active ?? true}
-            className="h-4 w-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
+            className="h-4 w-4 rounded-sm border-slate-300 text-brand-primary focus:ring-brand-primary"
           />
           Entrada ativa (visível para o chatbot)
         </label>

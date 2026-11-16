@@ -19,7 +19,7 @@ const DEMO_USER: TeamUser = {
 export async function getCurrentUser(): Promise<TeamUser> {
   if (!isSupabaseConfigured()) return DEMO_USER;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

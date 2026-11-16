@@ -5,8 +5,8 @@ import { cookies } from "next/headers";
  * Cliente Supabase para uso no server (Server Components, Route Handlers,
  * Server Actions). Mantém a sessão sincronizada via cookies.
  */
-export function createClient() {
-  const cookieStore = cookies();
+export async function createClient() {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

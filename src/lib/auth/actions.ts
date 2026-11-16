@@ -19,9 +19,16 @@ export async function signInAction(
   _prev: AuthState,
   formData: FormData
 ): Promise<AuthState> {
+  // Sanitiza o destino: aceita apenas caminhos internos (evita open redirect).
+  const rawRedirect = (formData.get("redirectTo") as string) || "/dashboard";
+  const redirectTo =
+    rawRedirect.startsWith("/") && !rawRedirect.startsWith("//")
+      ? rawRedirect
+      : "/dashboard";
+
   if (!isSupabaseConfigured()) {
-    // Modo demonstração: sem backend, segue direto para o dashboard.
-    redirect("/dashboard");
+    // Modo demonstração: sem backend, segue direto para a área interna.
+    redirect(redirectTo);
   }
 
   const parsed = credentialsSchema.safeParse({
@@ -33,9 +40,7 @@ export async function signInAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  const redirectTo = (formData.get("redirectTo") as string) || "/dashboard";
-
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
@@ -48,7 +53,7 @@ export async function signInAction(
 /** Encerra a sessão atual. */
 export async function signOutAction(): Promise<void> {
   if (isSupabaseConfigured()) {
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.auth.signOut();
   }
   redirect("/login");

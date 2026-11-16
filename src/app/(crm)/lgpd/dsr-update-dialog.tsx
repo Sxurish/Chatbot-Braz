@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2, AlertCircle, Info, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -19,7 +19,7 @@ import {
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit() {
@@ -77,7 +77,7 @@ export function DsrUpdateDialog({
   dsr: DsrRow | null;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(updateDsrAction, initial);
+  const [state, action] = useActionState(updateDsrAction, initial);
 
   useEffect(() => {
     if (state.ok) {
@@ -138,7 +138,7 @@ export function DsrUpdateDialog({
             ))}
           </Select>
           <p className="text-xs text-slate-500">
-            Marcar como "concluída" ou "negada" registra a data de resolução.
+            Marcar como “concluída” ou “negada” registra a data de resolução.
           </p>
         </div>
 

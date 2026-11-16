@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Plus, Loader2, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
 const initial: ActionState = {};
 
 const FieldLabel = ({ children }: { children: React.ReactNode }) => (
-  <label className="text-sm font-medium text-slate-700">{children}</label>
+  <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>
 );
 
 function Submit({ label }: { label: string }) {
@@ -66,7 +66,7 @@ const ACTIONS = {
 export function QuickCreate({ kind, buttonLabel }: { kind: Kind; buttonLabel: string }) {
   const [open, setOpen] = useState(false);
   const cfg = ACTIONS[kind];
-  const [state, action] = useFormState(cfg.fn, initial);
+  const [state, action] = useActionState(cfg.fn, initial);
 
   useEffect(() => {
     if (state.ok) {

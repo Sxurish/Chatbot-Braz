@@ -44,7 +44,7 @@ export async function listConsents(
   const page = Math.max(1, options.page ?? 1);
   if (!isSupabaseConfigured()) return { ...EMPTY_CONSENT, page };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("consent_logs")
     .select(
@@ -118,7 +118,7 @@ export async function listDsrRequests(
   const page = Math.max(1, options.page ?? 1);
   if (!isSupabaseConfigured()) return { ...EMPTY_DSR, page };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("dsr_requests")
     .select("*", { count: "exact" })
@@ -143,7 +143,7 @@ export async function listDsrRequests(
 
 export async function getDsrRequest(id: string): Promise<DsrRow | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("dsr_requests")
     .select("*")
@@ -165,7 +165,7 @@ export async function getLgpdMetrics(): Promise<LgpdMetrics> {
     };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const [total, accepted, open] = await Promise.all([
     supabase.from("consent_logs").select("id", { count: "exact", head: true }),
     supabase

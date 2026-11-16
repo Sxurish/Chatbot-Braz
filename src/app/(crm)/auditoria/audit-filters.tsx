@@ -24,7 +24,7 @@ export function AuditFilters({ team }: { team: TeamUser[] }) {
   return (
     <div className="flex flex-wrap items-end gap-3">
       <div className="space-y-1">
-        <label className="text-xs font-medium text-slate-600">Usuário</label>
+        <label className="block text-xs leading-6 font-medium text-slate-600">Usuário</label>
         <Select
           value={currentUser}
           onChange={(e) => update(e.target.value)}

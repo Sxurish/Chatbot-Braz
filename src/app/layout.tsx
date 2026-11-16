@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "Dr. Jean Braz — CRM Jurídico",
   description:
-    "Sistema de pré-atendimento jurídico inteligente e CRM do escritório do Dr. Jean Braz (OAB/SP).",
+    "Sistema de pré-atendimento jurídico inteligente e CRM do escritório do Dr. Jean Braz (OAB/SP 459.159).",
 };
 
 export default function RootLayout({

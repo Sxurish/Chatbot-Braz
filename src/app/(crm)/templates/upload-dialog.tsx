@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   AlertCircle,
   CheckCircle2,
@@ -23,7 +23,7 @@ import { TEMPLATE_CATEGORY_LABELS } from "@/lib/data/templates-types";
 const initial: ActionState = {};
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="text-sm font-medium text-slate-700">{children}</label>;
+  return <label className="block text-sm leading-6 font-medium text-slate-700">{children}</label>;
 }
 
 function Submit() {
@@ -64,7 +64,7 @@ export function UploadTemplateDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(uploadTemplateAction, initial);
+  const [state, action] = useActionState(uploadTemplateAction, initial);
   const [fileName, setFileName] = useState<string>("");
 
   useEffect(() => {

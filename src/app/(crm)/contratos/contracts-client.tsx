@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { FileSignature, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -149,7 +149,7 @@ function DeleteInner() {
 
 function DeleteButton({ id }: { id: string }) {
   const [armed, setArmed] = useState(false);
-  const [, action] = useFormState(deleteContractAction, {});
+  const [, action] = useActionState(deleteContractAction, {});
 
   if (!armed) {
     return (

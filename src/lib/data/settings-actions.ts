@@ -17,7 +17,7 @@ const DEMO_NOTICE =
   "Modo demonstração: configure o Supabase para gravar os dados de verdade.";
 
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   userId: string | null
 ) {
@@ -78,7 +78,7 @@ export async function updateOfficeAction(
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const current = await getSettings();
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase
     .from("settings")
@@ -151,7 +151,7 @@ export async function updateAiAction(
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const current = await getSettings();
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { error } = await supabase.from("settings").upsert({
     id: 1,
