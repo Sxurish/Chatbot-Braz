@@ -17,16 +17,17 @@ import { DsrList } from "./dsr-list";
 const BASE = "/lgpd";
 
 interface SearchParams {
-  searchParams: {
+  searchParams: Promise<{
     tab?: string;
     page?: string;
     channel?: string;
     decision?: string;
     status?: string;
-  };
+  }>;
 }
 
-export default async function Page({ searchParams }: SearchParams) {
+export default async function Page(props: SearchParams) {
+  const searchParams = await props.searchParams;
   const admin = await checkAdmin();
 
   if (!admin.ok) {
@@ -111,7 +112,7 @@ async function ConsentsSection({
   searchParams,
 }: {
   page: number;
-  searchParams: SearchParams["searchParams"];
+  searchParams: Awaited<SearchParams["searchParams"]>;
 }) {
   const channel = searchParams.channel || null;
   const decision =
@@ -150,7 +151,7 @@ async function DsrSection({
   searchParams,
 }: {
   page: number;
-  searchParams: SearchParams["searchParams"];
+  searchParams: Awaited<SearchParams["searchParams"]>;
 }) {
   const validStatuses: DsrStatus[] = [
     "recebida",

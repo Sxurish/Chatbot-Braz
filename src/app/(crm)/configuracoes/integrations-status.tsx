@@ -3,9 +3,9 @@ import {
   Circle,
   Copy,
   MessageSquare,
-  Instagram,
   Bot,
 } from "lucide-react";
+import { Instagram } from "@/components/icons/instagram";
 import {
   Card,
   CardContent,

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useRef, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -39,7 +39,7 @@ function SubmitButton() {
 }
 
 export function DocumentUpload({ leadId }: { leadId: string }) {
-  const [state, formAction] = useFormState(uploadDocumentAction, initialState);
+  const [state, formAction] = useActionState(uploadDocumentAction, initialState);
   const [open, setOpen] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 

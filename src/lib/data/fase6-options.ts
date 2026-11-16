@@ -17,7 +17,7 @@ export async function listClientOptions(): Promise<SelectOption[]> {
   if (!isSupabaseConfigured()) {
     return mockClients.map((c) => ({ id: c.id, label: c.full_name }));
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("clients")
     .select("id, full_name")
@@ -32,7 +32,7 @@ export async function listCaseOptions(): Promise<SelectOption[]> {
   if (!isSupabaseConfigured()) {
     return mockCases.map((c) => ({ id: c.id, label: c.title }));
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("cases")
     .select("id, title")
@@ -52,7 +52,7 @@ export async function listContractOptions(): Promise<SelectOption[]> {
         : `Contrato #${c.id.slice(0, 8)}`,
     }));
   }
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("contracts")
     .select("id, contract_type, created_at")

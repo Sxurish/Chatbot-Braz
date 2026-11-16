@@ -88,7 +88,7 @@ export async function ingestMessage(msg: InboundMessage): Promise<IngestResult> 
   // 3. Máquina de estados.
   let reply = "";
   let handoff = false;
-  let nextState: TriageState = { ...state };
+  const nextState: TriageState = { ...state };
 
   if (state.stage === "declined") {
     // Permite reconsentimento se o contato mudar de ideia.
@@ -294,6 +294,8 @@ async function registerConsent(
     policy_version: POLICY_VERSION,
     channel: msg.channel,
     user_agent: `channel:${msg.channel}`,
+    // Registra o momento em que o contato aceitou, não o da gravação.
+    created_at: consentAt ?? new Date().toISOString(),
   });
 }
 

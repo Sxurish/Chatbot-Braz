@@ -17,7 +17,7 @@ const DEMO_NOTICE =
   "Modo demonstração: configure o Supabase para gravar os dados.";
 
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   entityType: string,
   entityId: string | null,
@@ -93,7 +93,7 @@ export async function createProcessAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
   const { data, error } = await supabase
     .from("processes")
@@ -128,7 +128,7 @@ export async function updateProcessAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
   const { error } = await supabase
     .from("processes")
@@ -160,7 +160,7 @@ export async function deleteProcessAction(
   if (!id) return { error: "Processo inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("processes").delete().eq("id", id);
   if (error) return { error: "Falha ao excluir o processo." };
   await audit(supabase, "delete_process", "process", id, admin.user.id);
@@ -216,7 +216,7 @@ export async function createContractAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
   const { data, error } = await supabase
     .from("contracts")
@@ -251,7 +251,7 @@ export async function updateContractAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
   const { error } = await supabase
     .from("contracts")
@@ -283,7 +283,7 @@ export async function deleteContractAction(
   if (!id) return { error: "Contrato inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("contracts").delete().eq("id", id);
   if (error) return { error: "Falha ao excluir o contrato." };
   await audit(supabase, "delete_contract", "contract", id, admin.user.id);
@@ -341,7 +341,7 @@ export async function createPaymentAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
   const { data, error } = await supabase
     .from("payments")
@@ -375,7 +375,7 @@ export async function updatePaymentAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
   const { error } = await supabase
     .from("payments")
@@ -406,7 +406,7 @@ export async function deletePaymentAction(
   if (!id) return { error: "Pagamento inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.from("payments").delete().eq("id", id);
   if (error) return { error: "Falha ao excluir o pagamento." };
   await audit(supabase, "delete_payment", "payment", id, admin.user.id);

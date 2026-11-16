@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   AlertCircle,
   CheckCircle2,
@@ -64,7 +64,7 @@ export function UploadTemplateDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(uploadTemplateAction, initial);
+  const [state, action] = useActionState(uploadTemplateAction, initial);
   const [fileName, setFileName] = useState<string>("");
 
   useEffect(() => {

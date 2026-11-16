@@ -101,11 +101,8 @@ export async function renderDocxTemplate(
   buffer: Buffer,
   data: Record<string, string>
 ): Promise<Buffer> {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const PizZip = require("pizzip") as typeof import("pizzip");
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Docxtemplater =
-    require("docxtemplater") as typeof import("docxtemplater");
+  const { default: PizZip } = await import("pizzip");
+  const { default: Docxtemplater } = await import("docxtemplater");
 
   const zip = new PizZip(buffer);
   const doc = new Docxtemplater(zip, {

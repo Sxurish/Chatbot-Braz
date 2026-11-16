@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,7 +63,7 @@ export function EditTemplateDialog({
   template: DocumentTemplate | null;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(updateTemplateAction, initial);
+  const [state, action] = useActionState(updateTemplateAction, initial);
 
   useEffect(() => {
     if (state.ok) {
@@ -115,7 +115,7 @@ export function EditTemplateDialog({
             name="active"
             value="true"
             defaultChecked={template.active}
-            className="h-4 w-4 rounded border-slate-300 text-brand-primary focus:ring-brand-primary"
+            className="h-4 w-4 rounded-sm border-slate-300 text-brand-primary focus:ring-brand-primary"
           />
           Template ativo (disponível para geração)
         </label>
@@ -129,7 +129,7 @@ export function EditTemplateDialog({
               {template.placeholders.map((p) => (
                 <code
                   key={p}
-                  className="rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-700"
+                  className="rounded-sm bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-700"
                 >
                   {`{{${p}}}`}
                 </code>

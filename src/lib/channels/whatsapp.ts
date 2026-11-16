@@ -35,6 +35,8 @@ export function verifySignature(rawBody: string, signature: string | null): bool
 }
 
 /** Extrai as mensagens de texto recebidas de um payload de webhook do WhatsApp. */
+// O payload vem da Meta sem tipagem; todos os acessos usam ?. e são validados.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function parseInbound(payload: any): InboundMessage[] {
   const out: InboundMessage[] = [];
   const entries = payload?.entry ?? [];

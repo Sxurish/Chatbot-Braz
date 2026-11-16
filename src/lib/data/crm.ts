@@ -23,7 +23,7 @@ import type {
 
 export async function listTasks(): Promise<Task[]> {
   if (!isSupabaseConfigured()) return mockTasks;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("tasks")
     .select("*")
@@ -34,7 +34,7 @@ export async function listTasks(): Promise<Task[]> {
 
 export async function listAppointments(): Promise<Appointment[]> {
   if (!isSupabaseConfigured()) return mockAppointments;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("appointments")
     .select("*")
@@ -45,7 +45,7 @@ export async function listAppointments(): Promise<Appointment[]> {
 
 export async function listFollowUps(): Promise<FollowUp[]> {
   if (!isSupabaseConfigured()) return mockFollowUps;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("follow_ups")
     .select("*")
@@ -56,7 +56,7 @@ export async function listFollowUps(): Promise<FollowUp[]> {
 
 export async function listNotifications(): Promise<AppNotification[]> {
   if (!isSupabaseConfigured()) return mockNotifications;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("notifications")
     .select("*")
@@ -67,7 +67,7 @@ export async function listNotifications(): Promise<AppNotification[]> {
 
 export async function listDocumentsByLead(leadId: string): Promise<LegalDocument[]> {
   if (!isSupabaseConfigured()) return mockDocuments[leadId] ?? [];
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("documents")
     .select("*")

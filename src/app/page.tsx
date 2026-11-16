@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Gavel, MessageSquare, ShieldCheck, LayoutDashboard, ArrowRight } from "lucide-react";
+import { OFFICE_OAB } from "@/lib/constants";
 
 const AREAS = [
   "Direito Penal",
@@ -20,7 +21,7 @@ export default function HomePage() {
           </div>
           <div className="leading-tight">
             <p className="font-semibold">Dr. Jean Braz</p>
-            <p className="text-xs text-brand-gold">Advocacia • OAB/SP</p>
+            <p className="text-xs text-brand-gold">Advocacia • {OFFICE_OAB}</p>
           </div>
         </div>
         <Link

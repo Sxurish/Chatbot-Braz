@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   CalendarPlus,
   UserCheck,
@@ -113,7 +113,7 @@ export function LeadActions({ leadId }: { leadId: string }) {
 /** Botões do cabeçalho da página do lead (agendar / tornar cliente). */
 export function LeadHeaderActions({ leadId }: { leadId: string }) {
   const [dialog, setDialog] = useState<DialogKey>(null);
-  const [convertState, convertAction] = useFormState(
+  const [convertState, convertAction] = useActionState(
     convertLeadToClientAction,
     initial
   );
@@ -172,7 +172,7 @@ function TaskDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(createTaskAction, initial);
+  const [state, action] = useActionState(createTaskAction, initial);
   useCloseOnSuccess(state, onClose);
   return (
     <Dialog open={open} onClose={onClose} title="Nova tarefa">
@@ -221,7 +221,7 @@ function FollowUpDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(createFollowUpAction, initial);
+  const [state, action] = useActionState(createFollowUpAction, initial);
   useCloseOnSuccess(state, onClose);
   return (
     <Dialog open={open} onClose={onClose} title="Novo follow-up">
@@ -260,7 +260,7 @@ function AppointmentDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(createAppointmentAction, initial);
+  const [state, action] = useActionState(createAppointmentAction, initial);
   useCloseOnSuccess(state, onClose);
   return (
     <Dialog open={open} onClose={onClose} title="Novo agendamento">
@@ -317,7 +317,7 @@ function CaseDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  const [state, action] = useFormState(createCaseFromLeadAction, initial);
+  const [state, action] = useActionState(createCaseFromLeadAction, initial);
   useCloseOnSuccess(state, onClose);
   return (
     <Dialog

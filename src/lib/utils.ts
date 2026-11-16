@@ -50,7 +50,6 @@ export function timeAgo(value: string | Date): string {
     [Number.POSITIVE_INFINITY, "ano"],
   ];
   let unit = seconds;
-  let i = 0;
   let label = "segundo";
   for (const [divisor, name] of intervals) {
     if (unit < divisor) {
@@ -59,7 +58,6 @@ export function timeAgo(value: string | Date): string {
     }
     unit = Math.floor(unit / divisor);
     label = name;
-    i++;
   }
   const plural = unit !== 1 ? (label === "mês" ? "meses" : `${label}s`) : label;
   return `há ${unit} ${plural}`;

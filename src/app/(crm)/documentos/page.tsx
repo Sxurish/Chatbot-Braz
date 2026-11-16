@@ -33,16 +33,17 @@ const VALID_REVIEW: ReviewStatus[] = ["pendente", "revisado", "rejeitado"];
 const VALID_LINK: LinkFilter[] = ["lead", "client", "case", "process", "none"];
 
 interface SearchParams {
-  searchParams: {
+  searchParams: Promise<{
     page?: string;
     q?: string;
     category?: string;
     review?: string;
     link?: string;
-  };
+  }>;
 }
 
-export default async function Page({ searchParams }: SearchParams) {
+export default async function Page(props: SearchParams) {
+  const searchParams = await props.searchParams;
   const admin = await checkAdmin();
   const page = Math.max(1, Number(searchParams.page) || 1);
 

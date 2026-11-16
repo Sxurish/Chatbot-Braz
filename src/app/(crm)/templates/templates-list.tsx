@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   FileText,
   Loader2,
@@ -101,7 +101,7 @@ export function TemplatesList({
                     {t.placeholders.slice(0, 12).map((p) => (
                       <code
                         key={p}
-                        className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700"
+                        className="rounded-sm bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-700"
                       >
                         {p}
                       </code>
@@ -147,7 +147,7 @@ function DeleteInner() {
 
 function DeleteButton({ id }: { id: string }) {
   const [armed, setArmed] = useState(false);
-  const [, action] = useFormState(deleteTemplateAction, {});
+  const [, action] = useActionState(deleteTemplateAction, {});
 
   if (!armed) {
     return (

@@ -65,7 +65,7 @@ export async function listDocuments(
   const page = Math.max(1, options.page ?? 1);
   if (!isSupabaseConfigured()) return { ...EMPTY, page };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("documents")
     .select(
@@ -132,7 +132,7 @@ export async function listDocuments(
 
 export async function getDocument(id: string): Promise<DocumentRow | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("documents")
     .select(
@@ -172,7 +172,7 @@ export async function createDocumentSignedUrl(
   storagePath: string
 ): Promise<string | null> {
   if (!isSupabaseConfigured()) return null;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase.storage
     .from(BUCKET)
     .createSignedUrl(storagePath, SIGNED_URL_TTL_SECONDS);

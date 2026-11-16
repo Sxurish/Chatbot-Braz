@@ -1,4 +1,5 @@
-import { MessageCircle, Instagram, Globe, MessageSquare } from "lucide-react";
+import { MessageCircle, Globe, MessageSquare } from "lucide-react";
+import { Instagram } from "@/components/icons/instagram";
 import { Badge } from "@/components/ui/badge";
 
 const CHANNELS: Record<

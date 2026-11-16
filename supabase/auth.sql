@@ -11,8 +11,11 @@
 --  * SECURITY DEFINER + search_path fixo em 'public' para que o tipo enum
 --    user_role e a tabela public.users sejam sempre resolvidos.
 --  * O tipo é schema-qualificado (public.user_role) por segurança.
---  * O cast do role é tolerante: se vier um valor inválido nos metadados,
---    cai para 'atendente' em vez de derrubar a criação do usuário.
+--  * O papel NUNCA vem dos metadados do cadastro: quem se cadastra escolhe
+--    esses metadados, então aceitar 'role' dali deixaria qualquer pessoa
+--    virar admin. Todo usuário novo nasce 'atendente'; promova pelo SQL.
+--  * Mantenha "Allow new users to sign up" DESLIGADO no Supabase Auth:
+--    a equipe é criada pelo painel (Authentication → Users → Add user).
 --  * Toda a inserção é protegida por EXCEPTION para nunca bloquear o signup.
 create or replace function public.handle_new_user()
 returns trigger
@@ -23,15 +26,8 @@ as $$
 declare
   v_role public.user_role;
 begin
-  -- Resolve o papel a partir dos metadados, com fallback seguro.
-  begin
-    v_role := coalesce(
-      (new.raw_user_meta_data->>'role')::public.user_role,
-      'atendente'::public.user_role
-    );
-  exception when others then
-    v_role := 'atendente'::public.user_role;
-  end;
+  -- Papel fixo: nunca confiar em metadados enviados pelo próprio usuário.
+  v_role := 'atendente'::public.user_role;
 
   begin
     insert into public.users (id, name, email, role, active)

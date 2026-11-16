@@ -33,7 +33,7 @@ export async function listAuditLogs(
   const page = Math.max(1, options.page ?? 1);
   if (!isSupabaseConfigured()) return { ...EMPTY, page };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   let query = supabase
     .from("audit_logs")
     .select(

@@ -38,7 +38,7 @@ const DEMO_NOTICE =
   "Modo demonstração: configure o Supabase e o bucket document_templates para usar a automação documental.";
 
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   entityType: string,
   entityId: string | null,
@@ -80,7 +80,7 @@ export async function uploadTemplateAction(
 
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const arrayBuf = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuf);
   const placeholders = await extractPlaceholders(buffer);
@@ -153,7 +153,7 @@ export async function updateTemplateAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("document_templates")
     .update({
@@ -190,7 +190,7 @@ export async function deleteTemplateAction(
   if (!id) return { error: "Template inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const template = await getTemplate(id);
   if (!template) return { error: "Template não encontrado." };
 
@@ -220,7 +220,7 @@ export async function generateDocumentAction(
   if (!templateId || !leadId) return { error: "Dados incompletos." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const user = await getCurrentUser();
 
   const template = await getTemplate(templateId);

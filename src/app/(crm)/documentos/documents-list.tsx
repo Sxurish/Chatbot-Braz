@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   ChevronLeft,
   ChevronRight,
@@ -256,7 +256,7 @@ function DownloadInner() {
 
 function DownloadButton({ docId }: { docId: string }) {
   const router = useRouter();
-  const [, action] = useFormState(async (prev: ActionState, fd: FormData) => {
+  const [, action] = useActionState(async (prev: ActionState, fd: FormData) => {
     const result = await downloadDocumentAction(prev, fd);
     if (result.url) {
       window.open(result.url, "_blank", "noopener,noreferrer");
@@ -292,7 +292,7 @@ function DeleteInner() {
 
 function DeleteButton({ docId }: { docId: string }) {
   const [armed, setArmed] = useState(false);
-  const [, action] = useFormState(deleteDocumentAction, {});
+  const [, action] = useActionState(deleteDocumentAction, {});
 
   if (!armed) {
     return (

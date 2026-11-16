@@ -16,7 +16,7 @@ const DEMO_NOTICE =
   "Modo demonstração: configure o Supabase e rode supabase/lgpd.sql para gravar os dados.";
 
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   entityId: string | null,
   userId: string | null
@@ -80,7 +80,7 @@ export async function createDsrAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("dsr_requests")
     .insert({
@@ -134,7 +134,7 @@ export async function updateDsrAction(
   const isResolved =
     parsed.data.status === "concluida" || parsed.data.status === "negada";
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("dsr_requests")
     .update({

@@ -56,7 +56,7 @@ export async function uploadDocumentAction(
     return { ok: true };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const safeName = file.name.replace(/[^\w.\-]+/g, "_");
   const path = `leads/${leadId}/${Date.now()}_${safeName}`;
 

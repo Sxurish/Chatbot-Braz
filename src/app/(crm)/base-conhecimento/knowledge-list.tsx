@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useMemo, useState, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import {
   Plus,
   Pencil,
@@ -59,7 +59,7 @@ function ToggleInner({ active }: { active: boolean }) {
 }
 
 function ToggleButton({ entry }: { entry: KnowledgeEntry }) {
-  const [, action] = useFormState(toggleKnowledgeAction, {});
+  const [, action] = useActionState(toggleKnowledgeAction, {});
   return (
     <form action={action}>
       <input type="hidden" name="id" value={entry.id} />
@@ -75,7 +75,7 @@ function ToggleButton({ entry }: { entry: KnowledgeEntry }) {
 
 function DeleteButton({ entry }: { entry: KnowledgeEntry }) {
   const [armed, setArmed] = useState(false);
-  const [, action] = useFormState(deleteKnowledgeAction, {});
+  const [, action] = useActionState(deleteKnowledgeAction, {});
 
   if (!armed) {
     return (

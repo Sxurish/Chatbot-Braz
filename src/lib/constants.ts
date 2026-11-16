@@ -127,3 +127,6 @@ export const CHART_COLORS = [
   "#F59E0B",
   "#64748B",
 ];
+
+/** Inscrição na OAB do advogado responsável (Dr. Jean Braz). */
+export const OFFICE_OAB = "OAB/SP 459.159";

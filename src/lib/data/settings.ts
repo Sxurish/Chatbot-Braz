@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { OFFICE_OAB } from "@/lib/constants";
 
 export type AiProvider = "mock" | "openai" | "anthropic" | "openrouter" | "google";
 
@@ -42,7 +43,7 @@ const DEFAULT_SETTINGS: Settings = {
   ai_model: null,
   office: {
     cnpj: "",
-    oab: "OAB/SP 000.000",
+    oab: OFFICE_OAB,
     address: "",
     phone: "",
     email: "contato@escritoriobraz.adv.br",
@@ -70,7 +71,7 @@ const DEFAULT_SETTINGS: Settings = {
 export async function getSettings(): Promise<Settings> {
   if (!isSupabaseConfigured()) return DEFAULT_SETTINGS;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase
     .from("settings")
     .select("office_name, privacy_policy_version, ai_provider, ai_model, data, updated_at")

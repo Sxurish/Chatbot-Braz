@@ -12,7 +12,7 @@ import type { Lead, TeamUser } from "@/lib/types";
 export async function listLeads(): Promise<Lead[]> {
   if (!isSupabaseConfigured()) return mockLeads;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("leads")
     .select("*")
@@ -27,7 +27,7 @@ export async function getLead(id: string): Promise<Lead | null> {
     return mockLeads.find((l) => l.id === id) ?? null;
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data } = await supabase.from("leads").select("*").eq("id", id).maybeSingle();
   return (data as Lead) ?? null;
 }
@@ -35,7 +35,7 @@ export async function getLead(id: string): Promise<Lead | null> {
 export async function listTeam(): Promise<TeamUser[]> {
   if (!isSupabaseConfigured()) return mockTeam;
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("users")
     .select("id, name, email, role, active, last_login, created_at")

@@ -16,7 +16,7 @@ import type { Case, Client, Contract, Payment, Process } from "@/lib/types";
 
 export async function listClients(): Promise<Client[]> {
   if (!isSupabaseConfigured()) return mockClients;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("clients")
     .select("*")
@@ -27,7 +27,7 @@ export async function listClients(): Promise<Client[]> {
 
 export async function listCases(): Promise<Case[]> {
   if (!isSupabaseConfigured()) return mockCases;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("cases")
     .select("*")
@@ -38,7 +38,7 @@ export async function listCases(): Promise<Case[]> {
 
 export async function listProcesses(): Promise<Process[]> {
   if (!isSupabaseConfigured()) return mockProcesses;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("processes")
     .select("*")
@@ -49,7 +49,7 @@ export async function listProcesses(): Promise<Process[]> {
 
 export async function listContracts(): Promise<Contract[]> {
   if (!isSupabaseConfigured()) return mockContracts;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("contracts")
     .select("*")
@@ -60,7 +60,7 @@ export async function listContracts(): Promise<Contract[]> {
 
 export async function listPayments(): Promise<Payment[]> {
   if (!isSupabaseConfigured()) return mockPayments;
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from("payments")
     .select("*")

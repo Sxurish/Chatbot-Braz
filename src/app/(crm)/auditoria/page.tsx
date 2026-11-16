@@ -42,10 +42,11 @@ function relativeOrDate(iso: string): string {
 }
 
 interface SearchParams {
-  searchParams: { user?: string; page?: string };
+  searchParams: Promise<{ user?: string; page?: string }>;
 }
 
-export default async function Page({ searchParams }: SearchParams) {
+export default async function Page(props: SearchParams) {
+  const searchParams = await props.searchParams;
   const admin = await checkAdmin();
 
   if (!admin.ok) {

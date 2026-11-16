@@ -40,7 +40,7 @@ export async function signInAction(
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
@@ -53,7 +53,7 @@ export async function signInAction(
 /** Encerra a sessão atual. */
 export async function signOutAction(): Promise<void> {
   if (isSupabaseConfigured()) {
-    const supabase = createClient();
+    const supabase = await createClient();
     await supabase.auth.signOut();
   }
   redirect("/login");

@@ -1,6 +1,7 @@
 "use client";
 
-import { useFormState, useFormStatus } from "react-dom";
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { Loader2, AlertCircle, Info, CheckCircle2, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,7 +71,7 @@ export function AiForm({
   apiKeyConfigured: boolean;
   readOnly: boolean;
 }) {
-  const [state, action] = useFormState(updateAiAction, initial);
+  const [state, action] = useActionState(updateAiAction, initial);
 
   return (
     <Card>

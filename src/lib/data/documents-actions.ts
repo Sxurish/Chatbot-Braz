@@ -19,7 +19,7 @@ const DEMO_NOTICE =
   "Modo demonstração: configure o Supabase para baixar/editar documentos.";
 
 async function audit(
-  supabase: ReturnType<typeof createClient>,
+  supabase: Awaited<ReturnType<typeof createClient>>,
   action: string,
   entityId: string | null,
   userId: string | null
@@ -47,7 +47,7 @@ export async function downloadDocumentAction(
   if (!id) return { error: "Documento inválido." };
   if (!isSupabaseConfigured()) return { message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: doc } = await supabase
     .from("documents")
     .select("storage_path")
@@ -90,7 +90,7 @@ export async function updateReviewStatusAction(
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { error } = await supabase
     .from("documents")
     .update({ review_status: parsed.data.review_status })
@@ -118,7 +118,7 @@ export async function deleteDocumentAction(
   if (!id) return { error: "Documento inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: doc } = await supabase
     .from("documents")
     .select("storage_path, lead_id")

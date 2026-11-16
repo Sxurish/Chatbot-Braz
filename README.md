@@ -1,6 +1,6 @@
 # Chatbot-Braz — Dashboard/CRM Jurídico com Chatbot Inteligente
 
-Sistema web para o escritório do **Dr. Jean Braz** (OAB/SP) composto por um
+Sistema web para o escritório do **Dr. Jean Braz** (OAB/SP 459.159) composto por um
 **chatbot de pré-atendimento jurídico** (triagem, classificação e coleta de
 informações em conformidade com a LGPD) e um **CRM/Dashboard interno** para a
 gestão de leads, clientes, casos, documentos, agenda e tarefas.
@@ -96,12 +96,12 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 | Camada        | Tecnologia                                   |
 | ------------- | -------------------------------------------- |
-| Front-end     | Next.js 14 (App Router) + React 18           |
-| Linguagem     | TypeScript                                   |
-| Estilo        | Tailwind CSS (componentes estilo shadcn/ui)  |
+| Front-end     | Next.js 16 (App Router) + React 19           |
+| Linguagem     | TypeScript 6                                 |
+| Estilo        | Tailwind CSS 4 (componentes estilo shadcn/ui)|
 | Ícones        | lucide-react                                 |
-| Gráficos      | Recharts                                     |
-| Validação     | Zod                                          |
+| Gráficos      | Recharts 3                                   |
+| Validação     | Zod 4                                        |
 | Banco / Auth  | Supabase (PostgreSQL, Auth, Storage)         |
 | IA            | OpenAI / Anthropic / Gemini / OpenRouter     |
 | Deploy        | Vercel                                       |

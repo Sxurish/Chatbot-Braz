@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
-import { useFormState, useFormStatus } from "react-dom";
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 import { AlertCircle, CheckCircle2, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
@@ -77,7 +77,7 @@ export function PaymentDialog({
   onClose: () => void;
 }) {
   const isEdit = Boolean(payment);
-  const [state, action] = useFormState(
+  const [state, action] = useActionState(
     isEdit ? updatePaymentAction : createPaymentAction,
     initial
   );
