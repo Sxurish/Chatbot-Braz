@@ -1,6 +1,7 @@
 import { Wallet, TrendingUp, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { StatCard } from "@/components/dashboard/stat-card";
+import { AdminOnly } from "@/components/layout/admin-only";
 import { checkAdmin } from "@/lib/auth/require-admin";
 import { listContracts, listPayments } from "@/lib/data/fase6";
 import {
@@ -11,9 +12,12 @@ import { formatCurrency } from "@/lib/utils";
 import { PaymentsClient } from "./payments-client";
 
 export default async function FinancePage() {
-  const [admin, payments, contracts, contractOptions, clientOptions] =
+  // Financeiro: só Admin (a mesma regra vale no banco, via RLS).
+  const admin = await checkAdmin();
+  if (!admin.ok) return <AdminOnly title="Financeiro" />;
+
+  const [payments, contracts, contractOptions, clientOptions] =
     await Promise.all([
-      checkAdmin(),
       listPayments(),
       listContracts(),
       listContractOptions(),

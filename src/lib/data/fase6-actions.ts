@@ -210,6 +210,9 @@ export async function createContractAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  // Financeiro e contratos: só Admin.
+  const admin = await requireAdminAction();
+  if (!admin.ok) return { error: admin.error };
   const parsed = parseContract(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -243,6 +246,9 @@ export async function updateContractAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  // Financeiro e contratos: só Admin.
+  const admin = await requireAdminAction();
+  if (!admin.ok) return { error: admin.error };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Contrato inválido." };
   const parsed = parseContract(formData);
@@ -335,6 +341,9 @@ export async function createPaymentAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  // Financeiro e contratos: só Admin.
+  const admin = await requireAdminAction();
+  if (!admin.ok) return { error: admin.error };
   const parsed = parsePayment(formData);
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
@@ -367,6 +376,9 @@ export async function updatePaymentAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
+  // Financeiro e contratos: só Admin.
+  const admin = await requireAdminAction();
+  if (!admin.ok) return { error: admin.error };
   const id = String(formData.get("id") ?? "");
   if (!id) return { error: "Pagamento inválido." };
   const parsed = parsePayment(formData);

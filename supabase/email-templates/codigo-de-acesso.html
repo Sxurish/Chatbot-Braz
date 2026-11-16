@@ -1,0 +1,48 @@
+<!--
+  Modelo do e-mail com o código de acesso (primeiro acesso e "esqueci minha senha").
+  Onde colar: Supabase → Authentication → Emails → Templates → "Magic Link".
+  Assunto sugerido: Seu código de acesso ao CRM do escritório: {{ .Token }}
+  O código ({{ .Token }}) é preenchido pelo Supabase. Não coloque links de login aqui:
+  a pessoa digita o código na tela do CRM.
+-->
+<!doctype html>
+<html lang="pt-BR">
+  <body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 16px;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;">
+            <tr>
+              <td style="background:#0f172a;padding:20px 28px;">
+                <p style="margin:0;font-size:16px;font-weight:bold;color:#ffffff;">Escritório Dr. Jean Braz</p>
+                <p style="margin:4px 0 0;font-size:12px;color:#c9a84c;">CRM Jurídico • OAB/SP 459.159</p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:28px;">
+                <p style="margin:0 0 12px;font-size:15px;">Olá,</p>
+                <p style="margin:0 0 20px;font-size:15px;line-height:1.5;">
+                  Use o código abaixo para entrar no CRM do escritório e criar a sua senha.
+                </p>
+                <p style="margin:0 0 20px;text-align:center;">
+                  <span style="display:inline-block;padding:14px 24px;border-radius:10px;background:#f8fafc;border:1px solid #e2e8f0;font-size:30px;font-weight:bold;letter-spacing:8px;color:#1e3a8a;font-family:'Courier New',monospace;">{{ .Token }}</span>
+                </p>
+                <p style="margin:0 0 8px;font-size:13px;color:#475569;line-height:1.5;">
+                  O código vale por poucos minutos e só pode ser usado uma vez.
+                </p>
+                <p style="margin:0;font-size:13px;color:#475569;line-height:1.5;">
+                  Não pediu este código? Pode ignorar este e-mail. Ninguém do escritório vai pedir o código por telefone ou WhatsApp.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 28px;border-top:1px solid #e2e8f0;">
+                <p style="margin:0;font-size:11px;color:#94a3b8;">E-mail automático do CRM do escritório. Não responda.</p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

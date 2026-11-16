@@ -21,7 +21,7 @@ export async function listClients(): Promise<Client[]> {
     .from("clients")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error || !data) return mockClients;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Client[];
 }
 
@@ -32,7 +32,7 @@ export async function listCases(): Promise<Case[]> {
     .from("cases")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error || !data) return mockCases;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Case[];
 }
 
@@ -43,7 +43,7 @@ export async function listProcesses(): Promise<Process[]> {
     .from("processes")
     .select("*")
     .order("next_deadline", { ascending: true });
-  if (error || !data) return mockProcesses;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Process[];
 }
 
@@ -54,7 +54,7 @@ export async function listContracts(): Promise<Contract[]> {
     .from("contracts")
     .select("*")
     .order("created_at", { ascending: false });
-  if (error || !data) return mockContracts;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Contract[];
 }
 
@@ -65,6 +65,6 @@ export async function listPayments(): Promise<Payment[]> {
     .from("payments")
     .select("*")
     .order("due_date", { ascending: true });
-  if (error || !data) return mockPayments;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Payment[];
 }

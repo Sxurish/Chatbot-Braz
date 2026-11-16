@@ -1,60 +1,50 @@
-import { UserPlus } from "lucide-react";
+import { ShieldAlert } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar } from "@/components/ui/avatar";
+import { checkAdmin } from "@/lib/auth/require-admin";
 import { listTeam } from "@/lib/data/leads";
-import { formatDateTime, getInitials } from "@/lib/utils";
-import type { UserRole } from "@/lib/types";
+import { listInvites } from "@/lib/data/invites";
+import { hasServiceRole, isSupabaseConfigured } from "@/lib/supabase/config";
+import { InviteButton, InviteList, MemberRow } from "./team-client";
 
-const ROLE_LABEL: Record<UserRole, string> = {
-  admin: "Administrador",
-  advogado: "Advogado",
-  atendente: "Atendente",
-  financeiro: "Financeiro",
-  visualizador: "Visualizador",
-};
+export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
-  const team = await listTeam();
+  const admin = await checkAdmin();
+  const [team, invites] = await Promise.all([
+    listTeam(),
+    admin.ok ? listInvites() : Promise.resolve([]),
+  ]);
+  const canManage = admin.ok && (!isSupabaseConfigured() || hasServiceRole());
+  const loginUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://chatbot-braz.vercel.app"}/login`;
+
   return (
     <>
       <PageHeader
         title="Usuários e equipe"
-        description="Controle de acesso por papel: admin, advogado, atendente, financeiro e visualizador."
-        action={
-          <Button>
-            <UserPlus className="h-4 w-4" /> Convidar usuário
-          </Button>
-        }
+        description="Quem acessa o CRM e com qual papel. Novas pessoas entram por convite."
+        action={admin.ok ? <InviteButton loginUrl={loginUrl} /> : undefined}
       />
+
+      {admin.ok && !canManage && (
+        <div className="mb-6 flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+          <ShieldAlert className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>
+            Falta a variável <code className="font-mono">SUPABASE_SERVICE_ROLE_KEY</code> no servidor: os
+            convites funcionam, mas o primeiro acesso e a ativação de pessoas ficam desligados.
+          </p>
+        </div>
+      )}
+
+      {admin.ok && invites.length > 0 && <InviteList invites={invites} loginUrl={loginUrl} />}
+
       <Card className="divide-y divide-slate-100">
         {team.map((user) => (
-          <div key={user.id} className="flex items-center justify-between p-4">
-            <div className="flex items-center gap-3">
-              <Avatar fallback={getInitials(user.name)} />
-              <div>
-                <p className="font-medium text-slate-900">{user.name}</p>
-                <p className="text-xs text-slate-500">{user.email}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Badge className="border-brand-primary/20 bg-brand-primary/5 text-brand-primary">
-                {ROLE_LABEL[user.role]}
-              </Badge>
-              <span className="hidden text-xs text-slate-400 sm:inline">
-                Último acesso: {formatDateTime(user.last_login)}
-              </span>
-              <span
-                className={
-                  user.active
-                    ? "h-2 w-2 rounded-full bg-emerald-500"
-                    : "h-2 w-2 rounded-full bg-slate-300"
-                }
-              />
-            </div>
-          </div>
+          <MemberRow
+            key={user.id}
+            user={user}
+            editable={canManage && user.id !== admin.user.id}
+          />
         ))}
       </Card>
     </>

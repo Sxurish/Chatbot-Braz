@@ -43,7 +43,8 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login";
-  const isProtected = CRM_PREFIXES.some((p) => pathname.startsWith(p));
+  const isProtected =
+    CRM_PREFIXES.some((p) => pathname.startsWith(p)) || pathname === "/definir-senha";
 
   // Não autenticado tentando acessar área protegida → login.
   if (!user && isProtected) {
@@ -85,4 +86,6 @@ const CRM_PREFIXES = [
   "/lgpd",
   "/auditoria",
   "/configuracoes",
+  "/templates",
+  "/assistente",
 ];

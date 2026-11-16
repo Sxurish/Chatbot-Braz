@@ -18,7 +18,7 @@ export async function listLeads(): Promise<Lead[]> {
     .select("*")
     .order("created_at", { ascending: false });
 
-  if (error || !data) return mockLeads;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as Lead[];
 }
 
@@ -41,6 +41,6 @@ export async function listTeam(): Promise<TeamUser[]> {
     .select("id, name, email, role, active, last_login, created_at")
     .order("created_at", { ascending: true });
 
-  if (error || !data) return mockTeam;
+  if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as TeamUser[];
 }

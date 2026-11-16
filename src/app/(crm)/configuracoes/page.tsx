@@ -5,11 +5,25 @@ import { getSettings, getIntegrationStatus } from "@/lib/data/settings";
 import { OfficeForm } from "./office-form";
 import { AiForm } from "./ai-form";
 import { IntegrationsStatus } from "./integrations-status";
+import { AssistantForm } from "./assistant-form";
+import { isAssistantConfigured } from "@/lib/assistant/config";
+import { AssistantSetupError, getMonthSpendUsd } from "@/lib/assistant/store";
+
+async function readMonthSpend(): Promise<{ spent: number | null; setupMissing: boolean }> {
+  try {
+    return { spent: await getMonthSpendUsd(), setupMissing: false };
+  } catch (err) {
+    return { spent: null, setupMissing: err instanceof AssistantSetupError };
+  }
+}
+
+export const dynamic = "force-dynamic";
 
 export default async function Page() {
   const [admin, settings] = await Promise.all([checkAdmin(), getSettings()]);
   const integrations = getIntegrationStatus(settings.ai_provider);
   const readOnly = !admin.ok;
+  const spend = admin.ok ? await readMonthSpend() : { spent: null, setupMissing: false };
 
   return (
     <>
@@ -33,6 +47,13 @@ export default async function Page() {
         <AiForm
           settings={settings}
           apiKeyConfigured={integrations.ai.has_api_key}
+          readOnly={readOnly}
+        />
+        <AssistantForm
+          settings={settings}
+          apiKeyConfigured={isAssistantConfigured()}
+          monthSpendUsd={spend.spent}
+          setupMissing={spend.setupMissing}
           readOnly={readOnly}
         />
         <IntegrationsStatus status={integrations} />

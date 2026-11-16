@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { hasServiceRole, isSupabaseConfigured } from "@/lib/supabase/config";
 
 const credentialsSchema = z.object({
   email: z.string().email("Informe um e-mail válido."),
@@ -41,10 +41,18 @@ export async function signInAction(
   }
 
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data, error } = await supabase.auth.signInWithPassword(parsed.data);
 
   if (error) {
     return { error: "E-mail ou senha incorretos." };
+  }
+
+  // Registra o último acesso (exibido em Usuários / Equipe).
+  if (data.user && hasServiceRole()) {
+    await createServiceClient()
+      .from("users")
+      .update({ last_login: new Date().toISOString() })
+      .eq("id", data.user.id);
   }
 
   redirect(redirectTo);
