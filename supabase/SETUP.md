@@ -19,16 +19,20 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 4. `supabase/channels.sql` — colunas de canal (WhatsApp/Instagram) + dedup.
 
 > **Atalho:** `supabase/instalacao-completa.sql` junta todos os scripts
-> (inclusive `lgpd.sql`, `templates.sql`, a atualização de 2026-11-16 e o
-> assistente) num arquivo só, cria o perfil de quem já está em
+> (inclusive `lgpd.sql`, `templates.sql`, a atualização de 2026-11-16, o
+> assistente e os convites) num arquivo só, cria o perfil de quem já está em
 > Authentication → Users e é seguro rodar de novo.
 >
 > **Projeto que já tem as tabelas?** Rode só `supabase/atualizacao-2026-11-16.sql`
-> e depois `supabase/assistente-fase1.sql`.
+> e depois `supabase/assistente-fase1.sql` e `supabase/convites.sql`.
 
 > Dica: dá para rodar todos de uma vez colando um após o outro.
 
 ## 3. Criar o primeiro usuário (equipe)
+
+> Só o **primeiro administrador** é criado à mão. O resto da equipe entra por
+> convite (Equipe → Convidar pessoa → "Primeiro acesso" na tela de login).
+> Configuração do e-mail com o código: `docs/PRIMEIRO-ACESSO.md`.
 
 1. **Authentication → Users → Add user** (e-mail + senha).
 2. No **SQL Editor**, promova-o a admin:

@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { Topbar } from "@/components/layout/topbar";
 import { AssistantLauncher } from "@/components/assistant/assistant-launcher";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { requireTeamAccess } from "@/lib/auth/guard";
 import { listNotifications } from "@/lib/data/crm";
 
 export default async function CrmLayout({
@@ -9,6 +10,8 @@ export default async function CrmLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Sessão + perfil ativo na equipe (desativados e convites sem senha não entram).
+  await requireTeamAccess();
   const [user, notifications] = await Promise.all([
     getCurrentUser(),
     listNotifications(),

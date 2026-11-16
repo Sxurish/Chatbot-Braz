@@ -23,6 +23,16 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 - Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
   `supabase/assistente-fase1.sql`.
 
+### 🔑 Primeiro acesso por convite
+
+- Admin convida em **Equipe** (nome, e-mail e papel; vale 7 dias, com renovar e
+  cancelar). A pessoa clica em **Primeiro acesso** no login, recebe um código de
+  6 dígitos por e-mail e cria a senha. **Esqueci minha senha** usa o mesmo caminho.
+- Cadastro público continua desligado; mensagens neutras, limites de tentativa,
+  perfil inativo até criar a senha e desativação de membros pelo Admin.
+- Guia e configuração do SMTP em **`docs/PRIMEIRO-ACESSO.md`**; SQL em
+  `supabase/convites.sql`; modelo do e-mail em `supabase/email-templates/`.
+
 ### 📲 Integração de canais — WhatsApp e Instagram
 
 - **Webhooks** `/api/webhooks/whatsapp` e `/api/webhooks/instagram`:
