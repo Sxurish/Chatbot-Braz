@@ -12,7 +12,7 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ## ✨ O que já está implementado (Fases 1, 2, 4, 5, 6 + canais)
 
-### 🤖 Assistente virtual da equipe (fases 1 e 2: consulta e cadastro)
+### 🤖 Assistente virtual da equipe (fases 1 a 3: consulta, cadastro e andamentos)
 
 - Botão flutuante em todas as telas (Ctrl+K) e página **`/assistente`** com
   histórico: perguntas sobre leads, clientes, casos, processos, prazos,
@@ -24,9 +24,13 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
   processo, prazo, compromisso, lead, tarefa ou documento; nada é gravado até
   a pessoa conferir e clicar em **Confirmar**. Avisa duplicados (mesmo número
   CNJ, telefone, e-mail ou horário). Leitura de documentos com **Claude Sonnet**.
+- **Andamentos** (fase 3): busca diária e sob demanda no DataJud (CNJ) pelo
+  número do processo, lançamento manual com trava (a busca nunca altera o que a
+  equipe lançou ou corrigiu) e notificação de andamento novo. Guia em
+  **`docs/ANDAMENTOS.md`**.
 - Limite de gasto mensal (US$ 50 por padrão) com aviso em 80%.
 - Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
-  `supabase/assistente-fase1.sql` e `supabase/assistente-fase2.sql`.
+  `supabase/assistente-fase1.sql`, `assistente-fase2.sql` e `assistente-fase3.sql`.
 
 ### 🔑 Primeiro acesso por convite
 

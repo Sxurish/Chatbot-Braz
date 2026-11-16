@@ -20,12 +20,12 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 
 > **Atalho:** `supabase/instalacao-completa.sql` junta todos os scripts
 > (inclusive `lgpd.sql`, `templates.sql`, a atualização de 2026-11-16, o
-> assistente (fases 1 e 2) e os convites) num arquivo só, cria o perfil de quem já está em
+> assistente (fases 1 a 3) e os convites) num arquivo só, cria o perfil de quem já está em
 > Authentication → Users e é seguro rodar de novo.
 >
 > **Projeto que já tem as tabelas?** Rode só `supabase/atualizacao-2026-11-16.sql`
 > e depois `supabase/assistente-fase1.sql`, `supabase/convites.sql` e
-> `supabase/assistente-fase2.sql`.
+> `supabase/assistente-fase2.sql` e `supabase/assistente-fase3.sql`.
 
 > Dica: dá para rodar todos de uma vez colando um após o outro.
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isSafeInternalHref, parseBlocks } from "@/components/assistant/markdown";
+import { isSafeInternalHref, parseBlocks, renderInline } from "@/components/assistant/markdown";
 import { describePage } from "@/lib/assistant/prompt";
 
 describe("links nas respostas", () => {
@@ -15,6 +15,13 @@ describe("links nas respostas", () => {
     "leads/1",
   ])("recusa %s", (href) => {
     expect(isSafeInternalHref(href)).toBe(false);
+  });
+
+  it("link dentro de negrito continua link", () => {
+    const [strong] = renderInline("**[1002345-67](/processos/proc-001)**") as {
+      props: { children: { props: { href: string } }[] };
+    }[];
+    expect(strong.props.children[0].props.href).toBe("/processos/proc-001");
   });
 
   it("monta listas e parágrafos", () => {

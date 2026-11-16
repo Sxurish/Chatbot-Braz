@@ -1,5 +1,5 @@
 import { cnjDigits, phoneDigits, type DraftDuplicate } from "@/lib/assistant/draft-schema";
-import type { Appointment, Client, Lead, Process } from "@/lib/types";
+import type { Appointment, Client, Lead, Process, ProcessMovement } from "@/lib/types";
 
 /**
  * Checagem de duplicados antes de criar (funções puras, testáveis).
@@ -17,7 +17,7 @@ export function findProcessDuplicates(processNumber: string | undefined, process
     .map((p) => ({
       label: `Processo ${p.process_number}`,
       reason: "Mesmo número de processo já cadastrado",
-      link: "/processos",
+      link: `/processos/${encodeURIComponent(p.id)}`,
     }));
 }
 
@@ -93,5 +93,46 @@ export function findAppointmentConflicts(
       label: `${a.title} (${a.start_time.slice(0, 5)})`,
       reason: "Outro compromisso no mesmo horário",
       link: "/agenda",
+    }));
+}
+
+const spDay = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Sao_Paulo",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function normText(v: string | null | undefined) {
+  return String(v ?? "")
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim();
+}
+
+/**
+ * Andamento já lançado no mesmo processo e no mesmo dia (São Paulo) com texto
+ * igual ou que começa igual (ignorando acentos, pontuação e maiúsculas).
+ */
+export function findMovementDuplicates(
+  draft: { process_id?: string; occurred_at?: string; description?: string },
+  movements: ProcessMovement[]
+): DraftDuplicate[] {
+  const day = draft.occurred_at?.slice(0, 10);
+  const text = normText(draft.description);
+  if (!draft.process_id || !day || text.length < 4) return [];
+  return movements
+    .filter((m) => m.process_id === draft.process_id && spDay.format(new Date(m.occurred_at)) === day)
+    .filter((m) => {
+      const other = normText(m.description);
+      return other === text || (other.length >= 8 && text.startsWith(other)) || (text.length >= 8 && other.startsWith(text));
+    })
+    .slice(0, MAX)
+    .map((m) => ({
+      label: m.description.length > 80 ? `${m.description.slice(0, 77)}...` : m.description,
+      reason: `Andamento ${m.source === "datajud" ? "do tribunal" : "da equipe"} no mesmo dia`,
+      link: `/processos/${encodeURIComponent(m.process_id)}`,
     }));
 }

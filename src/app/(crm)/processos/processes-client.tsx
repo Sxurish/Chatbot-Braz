@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useActionState } from "react";
+import Link from "next/link";
 import { useFormStatus } from "react-dom";
-import { CalendarClock, Loader2, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -11,7 +12,7 @@ import { Scale } from "lucide-react";
 import { deleteProcessAction } from "@/lib/data/fase6-actions";
 import type { SelectOption } from "@/lib/data/fase6-options";
 import type { Process } from "@/lib/types";
-import { formatDate } from "@/lib/utils";
+import { brDate, brDayMonth } from "./format";
 import { ProcessDialog } from "./process-dialog";
 
 export function ProcessesClient({
@@ -44,13 +45,9 @@ export function ProcessesClient({
         <div className="space-y-3">
           {processes.map((p) => (
             <Card key={p.id} className="p-4">
-              <div className="flex items-start justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={() => setEditing(p)}
-                  className="min-w-0 flex-1 text-left"
-                >
-                  <p className="font-mono text-sm font-medium text-slate-900 hover:text-brand-primary">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <Link href={`/processos/${p.id}`} className="group min-w-0 flex-1">
+                  <p className="font-mono text-sm font-medium break-words text-slate-900 group-hover:text-brand-primary group-hover:underline">
                     {p.process_number ?? "Sem número"}
                   </p>
                   <p className="mt-1 text-sm text-slate-600">
@@ -58,16 +55,37 @@ export function ProcessesClient({
                       "—"}
                   </p>
                   {p.class && <p className="text-xs text-slate-500">{p.class}</p>}
-                  {p.next_deadline && (
-                    <p className="mt-2 inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
-                      <CalendarClock className="h-3 w-3" /> Próximo prazo:{" "}
-                      {formatDate(p.next_deadline)}
-                    </p>
-                  )}
-                </button>
-                <div className="flex shrink-0 items-center gap-2">
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                    {p.next_deadline && (
+                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-xs text-amber-700">
+                        <CalendarClock className="h-3 w-3" /> Próximo prazo:{" "}
+                        {brDate(p.next_deadline)}
+                      </span>
+                    )}
+                    {p.last_synced_at && (
+                      <span
+                        className="inline-flex items-center gap-1 text-xs text-slate-400"
+                        title="Última busca de andamentos no DataJud"
+                      >
+                        <RefreshCw className="h-3 w-3" /> Últ. busca {brDayMonth(p.last_synced_at)}
+                      </span>
+                    )}
+                  </div>
+                </Link>
+                <div className="flex shrink-0 items-center justify-between gap-2 border-t border-slate-100 pt-2 sm:border-0 sm:pt-0">
                   <LegalStatusBadge status={p.status} />
-                  {isAdmin && <DeleteButton id={p.id} />}
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setEditing(p)}
+                      title="Editar dados do processo"
+                      className="inline-flex h-8 items-center gap-1 rounded-md px-2 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                      Editar
+                    </button>
+                    {isAdmin && <DeleteButton id={p.id} />}
+                  </div>
                 </div>
               </div>
             </Card>

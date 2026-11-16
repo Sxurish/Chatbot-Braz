@@ -24,7 +24,14 @@ const PAGES: Record<DraftKind, string[]> = {
   prazo: ["/tarefas", "/processos"],
   compromisso: ["/agenda"],
   documento: ["/documentos"],
+  andamento: ["/processos"],
 };
+
+/** Como o cadastro é chamado na mensagem de sucesso. */
+const NOUN: Partial<Record<DraftKind, string>> = { andamento: "Andamento" };
+
+/** Registro de exemplo para o link no modo demonstração. */
+const DEMO_IDS: Partial<Record<string, string>> = { processes: "proc-001", leads: "lead-001" };
 
 export function canWrite(session: AssistantSession) {
   return session.user.role !== "visualizador";
@@ -68,10 +75,10 @@ export async function confirmDraft(
     return { ok: false, status: 409, error: "Este rascunho já está sendo confirmado." };
   }
 
-  const title = DRAFT_DEFS[draft.kind].title.replace(/^Novo |^Nova /, "");
+  const title = NOUN[draft.kind] ?? DRAFT_DEFS[draft.kind].title.replace(/^Novo |^Nova /, "");
 
   if (!isSupabaseConfigured()) {
-    const link = plan.link.replace("{id}", "lead-001");
+    const link = plan.link.replace("{id}", DEMO_IDS[plan.table] ?? "demo");
     await finishDraft(user.id, draftId, { status: "confirmado", link });
     return { ok: true, link, message: `Modo demonstração: ${title.toLowerCase()} conferido, mas nada foi gravado.` };
   }
@@ -157,7 +164,7 @@ export async function confirmDraft(
     const link = plan.link.replace("{id}", newId);
     await finishDraft(user.id, draftId, { status: "confirmado", table: plan.table, resultId: newId, link });
     for (const p of PAGES[draft.kind]) revalidatePath(p);
-    if (link.startsWith("/leads/")) revalidatePath(link);
+    if (link.startsWith("/leads/") || link.startsWith("/processos/")) revalidatePath(link);
     return { ok: true, link, message: `${title.charAt(0).toUpperCase()}${title.slice(1)} cadastrado.` };
   } catch (err) {
     console.error("[assistente] confirmar rascunho", err);

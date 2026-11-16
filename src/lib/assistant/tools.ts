@@ -14,6 +14,8 @@ import {
   listPayments,
   listProcesses,
 } from "@/lib/data/fase6";
+import { listMovements } from "@/lib/data/movements";
+import { listRecentMovements } from "@/lib/data/movements-recent";
 import {
   COMMERCIAL_STATUS_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -31,6 +33,8 @@ import type {
   LegalArea,
   LegalStatus,
   PaymentStatus,
+  Process,
+  ProcessMovement,
   TaskStatus,
   TeamUser,
   Urgency,
@@ -165,6 +169,62 @@ function clientLabel(clients: Client[], id: string | null) {
 function caseLabel(cases: Case[], id: string | null) {
   return id ? cases.find((c) => c.id === id)?.title ?? null : null;
 }
+
+/** Página do processo (com os andamentos). */
+export function processLink(id: string) {
+  return `/processos/${encodeURIComponent(id)}`;
+}
+
+/**
+ * Acha o processo pelo id ou pelo número CNJ (com ou sem pontuação; número
+ * parcial vale se tiver ao menos 7 dígitos). Pode devolver mais de um.
+ */
+export function findProcessesByRef(processes: Process[], ref: string): Process[] {
+  const value = ref.trim();
+  const byId = processes.find((p) => p.id === value);
+  if (byId) return [byId];
+  const d = digits(value);
+  if (d.length < 7) return [];
+  const exact = processes.filter((p) => digits(p.process_number) === d);
+  return exact.length ? exact : processes.filter((p) => digits(p.process_number).includes(d));
+}
+
+const dateFmt = new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" });
+const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: TZ,
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+/** dd/mm/aaaa no fuso de São Paulo. */
+export function formatDateBr(value: string): string {
+  return dateFmt.format(new Date(value));
+}
+
+function formatDateTimeBr(value: string | null | undefined): string | null {
+  return value ? dateTimeFmt.format(new Date(value)).replace(",", "") : null;
+}
+
+function movementView(m: ProcessMovement) {
+  const day = formatDateBr(m.occurred_at);
+  const arrived = formatDateBr(m.created_at);
+  return {
+    data: day,
+    descricao: m.description,
+    origem: m.source === "datajud" ? "tribunal" : "equipe",
+    travado: m.locked,
+    ...(m.edited_at ? { editado_pela_equipe: true } : {}),
+    ...(m.instance ? { instancia: m.instance } : {}),
+    // Andamento do tribunal que chegou ao CRM dias depois (atraso do DataJud).
+    ...(m.source === "datajud" && arrived !== day ? { chegou_ao_crm_em: arrived } : {}),
+  };
+}
+
+const DATAJUD_NOTE =
+  "Andamentos do tribunal vêm do DataJud (CNJ), que costuma atrasar alguns dias e não traz processos em segredo de justiça. Para buscar de novo, a pessoa clica em \"Buscar agora\" na página do processo.";
 
 // ---------------------------------------------------------------------------
 // Ferramentas
@@ -337,7 +397,7 @@ const buscarCasos = defineTool({
         resumo: k.summary,
         processos: processes
           .filter((p) => p.case_id === k.id)
-          .map((p) => ({ numero: p.process_number, proximo_prazo: p.next_deadline })),
+          .map((p) => ({ numero: p.process_number, proximo_prazo: p.next_deadline, link: processLink(p.id) })),
         link: "/casos",
       })),
       input.limite
@@ -349,7 +409,7 @@ const buscarProcessos = defineTool({
   name: "buscar_processos",
   label: "Buscando processos",
   description:
-    "Busca processos judiciais pelo número CNJ (com ou sem pontuação), vara, comarca, classe, assunto, título do caso ou nome do cliente. Traz o próximo prazo cadastrado. Ainda não há andamentos dos tribunais no CRM.",
+    "Busca processos judiciais pelo número CNJ (com ou sem pontuação), vara, comarca, classe, assunto, título do caso ou nome do cliente. Traz o próximo prazo cadastrado. Para os andamentos, use andamentos_do_processo.",
   schema: z.object({
     numero: z.string().max(40).optional().describe("Número do processo, completo ou parcial."),
     texto: z.string().max(120).optional(),
@@ -389,11 +449,140 @@ const buscarProcessos = defineTool({
           proximo_prazo: p.next_deadline,
           caso: caseLabel(cases, p.case_id),
           cliente: clientLabel(clients, kase?.client_id ?? null),
-          link: "/processos",
+          link: processLink(p.id),
         };
       }),
       input.limite
     );
+  },
+});
+
+const andamentosDoProcesso = defineTool({
+  name: "andamentos_do_processo",
+  label: "Lendo os andamentos",
+  description:
+    "Lista os andamentos de UM processo, do mais recente para o mais antigo: os que vieram do tribunal (DataJud) e os lançados pela equipe. Informe o id do processo (de buscar_processos ou da tela atual) ou o número CNJ, com ou sem pontuação. Traz também quando foi a última busca no DataJud e o aviso de falha, se houver.",
+  schema: z.object({
+    processo: z
+      .string()
+      .min(1)
+      .max(64)
+      .describe("Id do processo ou número CNJ (completo ou com ao menos 7 dígitos)."),
+    limite: z.number().int().min(1).max(50).default(15),
+  }),
+  async run(input) {
+    const [processes, cases, clients] = await Promise.all([listProcesses(), listCases(), listClients()]);
+    const found = findProcessesByRef(processes, input.processo);
+    if (found.length === 0) {
+      return { encontrado: false, mensagem: "Processo não encontrado no CRM. Confira o número ou procure com buscar_processos." };
+    }
+    if (found.length > 1) {
+      return {
+        encontrado: false,
+        mensagem: "Mais de um processo combina com esse número. Pergunte qual é.",
+        opcoes: found.slice(0, 10).map((p) => ({ id: p.id, numero: p.process_number, link: processLink(p.id) })),
+      };
+    }
+    const p = found[0];
+    const kase = cases.find((k) => k.id === p.case_id);
+    const movements = await listMovements(p.id);
+    return {
+      encontrado: true,
+      processo: {
+        id: p.id,
+        numero: p.process_number,
+        caso: kase?.title ?? null,
+        cliente: clientLabel(clients, kase?.client_id ?? null),
+        link: processLink(p.id),
+      },
+      total: movements.length,
+      mostrando: Math.min(movements.length, input.limite),
+      andamentos: movements.slice(0, input.limite).map(movementView),
+      busca_automatica_ligada: p.sync_enabled ?? true,
+      ultima_busca_datajud: formatDateTimeBr(p.last_synced_at),
+      aviso_sync: p.sync_error ?? null,
+      observacao: DATAJUD_NOTE,
+      link: processLink(p.id),
+    };
+  },
+});
+
+const andamentosRecentes = defineTool({
+  name: "andamentos_recentes",
+  label: "Vendo o que mudou",
+  description:
+    "Mostra o que mudou nos processos: andamentos dos últimos N dias (que aconteceram ou chegaram ao CRM no período), agrupados por processo. Pode filtrar pelo nome do cliente ou pelo título do caso. Use para 'o que mudou nos processos do cliente X?' ou 'andamentos novos desta semana'.",
+  schema: z.object({
+    dias: z.number().int().min(1).max(60).default(7),
+    cliente: z.string().max(120).optional().describe("Trecho do nome do cliente."),
+    caso: z.string().max(160).optional().describe("Trecho do título do caso."),
+    limite: z.number().int().min(1).max(100).default(40).describe("Máximo de andamentos no total."),
+  }),
+  async run(input, ctx) {
+    const [processes, cases, clients] = await Promise.all([listProcesses(), listCases(), listClients()]);
+    const caseOf = (p: Process) => cases.find((k) => k.id === p.case_id);
+    const filtering = Boolean(input.cliente || input.caso);
+    const scope = filtering
+      ? processes.filter((p) => {
+          const kase = caseOf(p);
+          return (
+            (!input.cliente || matchesText(input.cliente, clientLabel(clients, kase?.client_id ?? null))) &&
+            (!input.caso || matchesText(input.caso, kase?.title))
+          );
+        })
+      : processes;
+    if (filtering && scope.length === 0) {
+      return {
+        encontrado: false,
+        mensagem: "Nenhum processo no CRM para esse cliente ou caso. Confira o nome com buscar_clientes ou buscar_casos.",
+      };
+    }
+
+    const today = isoDateInSaoPaulo(ctx.now);
+    const fromDay = addDays(today, -input.dias);
+    const since = new Date(`${fromDay}T00:00:00-03:00`).toISOString();
+    const backlogCutoff = new Date(`${addDays(fromDay, -30)}T00:00:00-03:00`).toISOString();
+    const movements = (
+      await listRecentMovements({
+        since,
+        backlogCutoff,
+        processIds: filtering ? scope.map((p) => p.id) : undefined,
+      })
+    ).slice(0, input.limite);
+
+    const byProcess = new Map<string, ProcessMovement[]>();
+    for (const m of movements) byProcess.set(m.process_id, [...(byProcess.get(m.process_id) ?? []), m]);
+    const processos = [...byProcess.entries()].map(([id, items]) => {
+      const p = processes.find((x) => x.id === id);
+      const kase = p ? caseOf(p) : undefined;
+      return {
+        numero: p?.process_number ?? null,
+        caso: kase?.title ?? null,
+        cliente: clientLabel(clients, kase?.client_id ?? null),
+        link: processLink(id),
+        ultima_busca_datajud: formatDateTimeBr(p?.last_synced_at),
+        aviso_sync: p?.sync_error ?? null,
+        andamentos: items.map(movementView),
+      };
+    });
+    const semNovidade = scope
+      .filter((p) => !byProcess.has(p.id) && p.status !== "encerrado")
+      .map((p) => ({
+        numero: p.process_number,
+        link: processLink(p.id),
+        ultima_busca_datajud: formatDateTimeBr(p.last_synced_at),
+        aviso_sync: p.sync_error ?? null,
+      }));
+
+    return {
+      de: formatDateBr(since),
+      ate: formatDateBr(ctx.now.toISOString()),
+      total_andamentos: movements.length,
+      processos,
+      // Com filtro, lista também os processos sem andamento no período.
+      ...(filtering ? { processos_sem_andamento_no_periodo: semNovidade.slice(0, 15) } : {}),
+      observacao: DATAJUD_NOTE,
+    };
   },
 });
 
@@ -428,7 +617,7 @@ const listarPrazos = defineTool({
           vencido: dateOnly(p.next_deadline)! < today,
           descricao: `Processo ${p.process_number ?? "sem número"}${p.subject ? ` (${p.subject})` : ""}`,
           caso: caseLabel(cases, p.case_id),
-          link: "/processos",
+          link: processLink(p.id),
         })),
       ...tasks
         .filter((t) => t.status !== "concluida" && t.status !== "cancelada" && inWindow(dateOnly(t.due_date)))
@@ -726,6 +915,8 @@ export const ALL_TOOLS: AssistantTool[] = [
   buscarClientes,
   buscarCasos,
   buscarProcessos,
+  andamentosDoProcesso,
+  andamentosRecentes,
   listarPrazos,
   listarTarefas,
   listarAgenda,

@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   DEFAULT_ATTACH_CATEGORY,
   DRAFT_DEFS,
+  DRAFT_KINDS,
   formatCnj,
   linkLabelKey,
   type DraftData,
@@ -13,6 +14,7 @@ import {
 } from "@/lib/assistant/draft-schema";
 import {
   findAppointmentConflicts,
+  findMovementDuplicates,
   findPersonDuplicates,
   findProcessDuplicates,
 } from "@/lib/assistant/duplicates";
@@ -22,9 +24,10 @@ import { defineTool, type AssistantTool, type ToolContext } from "@/lib/assistan
 import { listAppointments } from "@/lib/data/crm";
 import { listCases, listClients, listProcesses } from "@/lib/data/fase6";
 import { listLeads, listTeam } from "@/lib/data/leads";
+import { listMovements } from "@/lib/data/movements";
 
 /**
- * Ferramentas de RASCUNHO do assistente (fase 2). Nenhuma grava no CRM:
+ * Ferramentas de RASCUNHO do assistente (fase 2; andamento na fase 3). Nenhuma grava no CRM:
  * cada uma monta um rascunho, confere duplicados e mostra um cartão para a
  * pessoa conferir. Só o botão Confirmar grava, no servidor.
  */
@@ -184,8 +187,8 @@ export async function normalizeDraftInput(
   }
   if (kind === "compromisso" && !data.modality) data.modality = "presencial";
   if (kind === "lead" && !data.source) data.source = "outro";
-  if (attachment) {
-    if (kind !== "documento" && kind !== "compromisso") data.attach_file = true;
+  if (attachment && keys.has("attach_category")) {
+    if (keys.has("attach_file")) data.attach_file = true;
     data.attach_category ??= DEFAULT_ATTACH_CATEGORY[kind];
     if (kind === "documento" && !data.file_name) data.file_name = attachment.name;
   }
@@ -211,6 +214,14 @@ async function findDuplicates(kind: DraftKind, data: DraftData): Promise<DraftDu
         { date: s("date"), start_time: s("start_time"), end_time: s("end_time") },
         await listAppointments()
       );
+    case "andamento": {
+      const processId = s("process_id");
+      if (!processId) return [];
+      return findMovementDuplicates(
+        { process_id: processId, occurred_at: s("occurred_at"), description: s("description") },
+        await listMovements(processId)
+      );
+    }
     default:
       return [];
   }
@@ -228,6 +239,8 @@ const DESCRIPTIONS: Record<DraftKind, string> = {
     "Prepara o RASCUNHO de um compromisso na agenda (reunião, audiência, atendimento). Não grava. Avisa se já houver outro compromisso no mesmo horário.",
   documento:
     "Prepara o RASCUNHO para anexar o arquivo enviado nesta mensagem a um processo, caso, lead ou cliente. Só funciona quando a pessoa anexou um arquivo. Não grava.",
+  andamento:
+    "Prepara o RASCUNHO de um andamento lançado pela equipe num processo já cadastrado (ex.: 'registra que protocolamos a réplica hoje', ou o que uma intimação anexada informa). Não grava. Antes, ache o processo com buscar_processos ou andamentos_do_processo e use o id dele. occurred_at é a data em que o fato aconteceu (AAAA-MM-DD, ou AAAA-MM-DDTHH:mm se souber a hora); 'hoje' é a data de hoje. Descreva o fato de forma curta e objetiva, sem inventar. Avisa se já houver andamento igual no mesmo dia.",
 };
 
 function makeDraftTool(kind: DraftKind): AssistantTool {
@@ -278,6 +291,4 @@ function makeDraftTool(kind: DraftKind): AssistantTool {
   });
 }
 
-export const DRAFT_TOOLS: AssistantTool[] = (
-  ["processo", "lead", "tarefa", "prazo", "compromisso", "documento"] as const
-).map(makeDraftTool);
+export const DRAFT_TOOLS: AssistantTool[] = DRAFT_KINDS.map(makeDraftTool);
