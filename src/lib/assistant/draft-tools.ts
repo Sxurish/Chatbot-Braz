@@ -281,7 +281,10 @@ function makeDraftTool(kind: DraftKind): AssistantTool {
       return {
         rascunho_id: draft.id,
         tipo: DRAFT_DEFS[kind].title,
-        situacao: "aguardando a pessoa conferir e clicar em Confirmar no cartão",
+        situacao:
+          ctx.channel === "whatsapp"
+            ? "aguardando a pessoa responder OK no WhatsApp (o resumo do rascunho é enviado automaticamente no fim da sua resposta)"
+            : "aguardando a pessoa conferir e clicar em Confirmar no cartão",
         dados: data,
         incertos: uncertain,
         duplicados: duplicates,

@@ -6,6 +6,7 @@ import { createClient, createServiceClient } from "@/lib/supabase/server";
 import { hasServiceRole, isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireAdminAction } from "@/lib/auth/require-admin";
 import { inviteExpiry, inviteSchema } from "@/lib/auth/invite-rules";
+import { parseWhatsappNumberInput, whatsappNumberVariants } from "@/lib/whatsapp-number";
 
 export interface TeamActionState {
   ok?: boolean;
@@ -148,4 +149,87 @@ export async function updateMemberAction(formData: FormData): Promise<void> {
   }
   await audit("member_updated", parsed.data.id, admin.user.id, patch);
   revalidatePath("/equipe");
+}
+
+// ---------------------------------------------------------------------------
+// WhatsApp do assistente e resumo diário (fase 4) — só Admin
+// ---------------------------------------------------------------------------
+const whatsappSchema = z.object({
+  id: z.string().min(1).max(64),
+  whatsapp_number: z.string().max(40).optional(),
+  daily_digest: z.enum(["true", "false"]).optional(),
+});
+
+/**
+ * Cadastra (ou remove) o número de WhatsApp com que a pessoa fala com o
+ * assistente e liga/desliga o resumo diário. Grava pelo servidor com service
+ * role (a equipe não tem permissão de UPDATE em users) e só para Admin.
+ * O Admin pode editar a própria linha (é assim que o Dr. Jean cadastra o
+ * próprio número).
+ */
+export async function updateMemberWhatsappAction(
+  _prev: TeamActionState,
+  formData: FormData
+): Promise<TeamActionState> {
+  const admin = await requireAdminAction();
+  if (!admin.ok) return { error: admin.error };
+
+  const parsed = whatsappSchema.safeParse({
+    id: formData.get("id"),
+    whatsapp_number: formData.get("whatsapp_number") ?? undefined,
+    daily_digest: formData.get("daily_digest") === "true" ? "true" : "false",
+  });
+  if (!parsed.success) return { error: "Dados inválidos." };
+  const number = parseWhatsappNumberInput(parsed.data.whatsapp_number);
+  if (!number.ok) return { error: number.error };
+  const dailyDigest = parsed.data.daily_digest === "true";
+
+  if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
+  if (!hasServiceRole()) {
+    return { error: "Falta a variável SUPABASE_SERVICE_ROLE_KEY no servidor para salvar." };
+  }
+  if (!z.string().uuid().safeParse(parsed.data.id).success) return { error: "Pessoa não encontrada." };
+
+  const svc = createServiceClient();
+  if (number.number) {
+    // Um número por pessoa, contando o celular com e sem o nono dígito.
+    const { data: taken, error: takenError } = await svc
+      .from("users")
+      .select("id")
+      .in("whatsapp_number", whatsappNumberVariants(number.number))
+      .neq("id", parsed.data.id)
+      .limit(1);
+    if (takenError) return { error: friendlyWhatsappError(takenError) };
+    if (taken && taken.length > 0) {
+      return { error: "Esse número já está cadastrado para outra pessoa da equipe." };
+    }
+  }
+
+  const { data: updated, error } = await svc
+    .from("users")
+    .update({ whatsapp_number: number.number, daily_digest: dailyDigest })
+    .eq("id", parsed.data.id)
+    .select("id");
+  if (error) return { error: friendlyWhatsappError(error) };
+  if (!updated || updated.length === 0) return { error: "Pessoa não encontrada." };
+
+  await audit("member_whatsapp_updated", parsed.data.id, admin.user.id, {
+    // No log, só o final do número.
+    whatsapp: number.number ? `…${number.number.slice(-4)}` : null,
+    daily_digest: dailyDigest,
+  });
+  revalidatePath("/equipe");
+  return {
+    ok: true,
+    message: number.number ? "WhatsApp salvo." : "WhatsApp removido.",
+  };
+}
+
+function friendlyWhatsappError(error: { code?: string; message?: string }): string {
+  if (error.code === "23505") return "Esse número já está cadastrado para outra pessoa da equipe.";
+  if (error.code === "23514") return "Número inválido. Use DDI + DDD + número, ex.: 55 11 98888-7777.";
+  if (error.code === "42703" || /whatsapp_number|daily_digest/.test(error.message ?? "")) {
+    return "O banco ainda não tem os campos da fase 4. Rode supabase/assistente-fase4.sql no Supabase.";
+  }
+  return "Não foi possível salvar agora. Tente de novo.";
 }

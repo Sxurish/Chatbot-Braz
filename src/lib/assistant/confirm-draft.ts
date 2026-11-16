@@ -33,6 +33,19 @@ const NOUN: Partial<Record<DraftKind, string>> = { andamento: "Andamento" };
 /** Registro de exemplo para o link no modo demonstração. */
 const DEMO_IDS: Partial<Record<string, string>> = { processes: "proc-001", leads: "lead-001" };
 
+/**
+ * Atualiza o cache das telas sem arriscar o cadastro: fora de um pedido do
+ * navegador (ex.: resposta do WhatsApp rodando depois do 200 à Meta) o
+ * Next pode recusar; o registro já foi gravado e não pode voltar a "pendente".
+ */
+function safeRevalidate(path: string) {
+  try {
+    revalidatePath(path);
+  } catch (err) {
+    console.warn("[assistente] não foi possível atualizar o cache de", path, err);
+  }
+}
+
 export function canWrite(session: AssistantSession) {
   return session.user.role !== "visualizador";
 }
@@ -40,7 +53,9 @@ export function canWrite(session: AssistantSession) {
 /**
  * Confirma um rascunho: valida de novo os dados editados no cartão e grava
  * com o login de quem confirmou (as regras de RLS valem). Só aqui o
- * assistente cria registros no CRM.
+ * assistente cria registros no CRM. Pelo WhatsApp (fase 4) o "OK" chega aqui
+ * com os dados do próprio rascunho; o cliente é o service role, então autor,
+ * dono do rascunho e log de auditoria são sempre preenchidos com user.id.
  */
 export async function confirmDraft(
   session: AssistantSession,
@@ -98,6 +113,11 @@ export async function confirmDraft(
     }
 
     let row = plan.row;
+    if (plan.table === "process_movements") {
+      // Autor explícito: pelo WhatsApp o cliente é o service role e o banco
+      // não teria auth.uid() para preencher.
+      row = { ...row, created_by: user.id };
+    }
     if (plan.table === "documents") {
       row = {
         ...row,
@@ -163,8 +183,8 @@ export async function confirmDraft(
 
     const link = plan.link.replace("{id}", newId);
     await finishDraft(user.id, draftId, { status: "confirmado", table: plan.table, resultId: newId, link });
-    for (const p of PAGES[draft.kind]) revalidatePath(p);
-    if (link.startsWith("/leads/") || link.startsWith("/processos/")) revalidatePath(link);
+    for (const p of PAGES[draft.kind]) safeRevalidate(p);
+    if (link.startsWith("/leads/") || link.startsWith("/processos/")) safeRevalidate(link);
     return { ok: true, link, message: `${title.charAt(0).toUpperCase()}${title.slice(1)} cadastrado.` };
   } catch (err) {
     console.error("[assistente] confirmar rascunho", err);

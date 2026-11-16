@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { getTeamMemberContext } from "@/lib/supabase/request-context";
 import type { TeamUser } from "@/lib/types";
 
 export interface AssistantSession {
@@ -16,6 +17,12 @@ export interface AssistantSession {
  * que o próprio usuário pode alterar).
  */
 export async function getAssistantSession(): Promise<AssistantSession | null> {
+  const member = getTeamMemberContext();
+  if (member) {
+    if (!member.user.active) return null;
+    return { user: member.user, isAdmin: member.user.role === "admin" };
+  }
+
   if (!isSupabaseConfigured()) {
     const user = await getCurrentUser(); // perfil de demonstração (admin)
     return { user, isAdmin: user.role === "admin" };

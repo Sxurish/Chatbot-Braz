@@ -206,6 +206,10 @@ export interface TeamUser {
   active: boolean;
   last_login: string | null;
   created_at: string;
+  /** Fase 4: número (só dígitos, com DDI) autorizado a usar o assistente pelo WhatsApp. */
+  whatsapp_number?: string | null;
+  /** Fase 4: recebe o resumo diário. */
+  daily_digest?: boolean;
 }
 
 export type NotificationType =

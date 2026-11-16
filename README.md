@@ -12,7 +12,7 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
 
 ## ✨ O que já está implementado (Fases 1, 2, 4, 5, 6 + canais)
 
-### 🤖 Assistente virtual da equipe (fases 1 a 3: consulta, cadastro e andamentos)
+### 🤖 Assistente virtual da equipe (fases 1 a 4: consulta, cadastro, andamentos, resumo diário e WhatsApp)
 
 - Botão flutuante em todas as telas (Ctrl+K) e página **`/assistente`** com
   histórico: perguntas sobre leads, clientes, casos, processos, prazos,
@@ -28,9 +28,14 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
   número do processo, lançamento manual com trava (a busca nunca altera o que a
   equipe lançou ou corrigiu) e notificação de andamento novo. Guia em
   **`docs/ANDAMENTOS.md`**.
+- **Resumo diário** (fase 4): cartão "Resumo do dia" no Dashboard e envio nos
+  dias úteis às 9h pelo WhatsApp (modelo aprovado na Meta), sem valores
+  financeiros no WhatsApp. **Assistente pelo WhatsApp** para números da equipe
+  cadastrados pelo Admin, com cadastro só depois de responder "OK". Guia em
+  **`docs/RESUMO-E-WHATSAPP.md`**.
 - Limite de gasto mensal (US$ 50 por padrão) com aviso em 80%.
 - Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
-  `supabase/assistente-fase1.sql`, `assistente-fase2.sql` e `assistente-fase3.sql`.
+  `supabase/assistente-fase1.sql` a `assistente-fase4.sql`.
 
 ### 🔑 Primeiro acesso por convite
 
