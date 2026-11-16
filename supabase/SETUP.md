@@ -18,8 +18,13 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 3. `supabase/storage.sql`  — bucket privado `documents` + políticas.
 4. `supabase/channels.sql` — colunas de canal (WhatsApp/Instagram) + dedup.
 
-> **Projeto que já está no ar?** Rode só `supabase/atualizacao-2026-11-16.sql`
-> (correção de segurança do cadastro de usuários + número da OAB).
+> **Atalho:** `supabase/instalacao-completa.sql` junta todos os scripts
+> (inclusive `lgpd.sql`, `templates.sql`, a atualização de 2026-11-16 e o
+> assistente) num arquivo só, cria o perfil de quem já está em
+> Authentication → Users e é seguro rodar de novo.
+>
+> **Projeto que já tem as tabelas?** Rode só `supabase/atualizacao-2026-11-16.sql`
+> e depois `supabase/assistente-fase1.sql`.
 
 > Dica: dá para rodar todos de uma vez colando um após o outro.
 
