@@ -92,6 +92,22 @@ export function summaryText(job: string, summary: Record<string, unknown> | null
     if (n(summary.falhas)) parts.push(plural(n(summary.falhas), "falha", "falhas"));
     return parts.join(", ");
   }
+  if (job === "intimacoes") {
+    if (typeof summary.captura_erro === "string" && summary.captura_erro) {
+      return `Captura falhou: ${summary.captura_erro}`;
+    }
+    const parts = [
+      plural(n(summary.novas), "intimação nova", "intimações novas"),
+      plural(n(summary.repetidas), "repetida", "repetidas"),
+      plural(n(summary.vinculadas), "ligada a processo", "ligadas a processo"),
+    ];
+    if (n(summary.ia_lidas)) parts.push(plural(n(summary.ia_lidas), "lida pela IA", "lidas pela IA"));
+    if (n(summary.whatsapp_enviados)) parts.push(plural(n(summary.whatsapp_enviados), "aviso no WhatsApp", "avisos no WhatsApp"));
+    if (summary.truncada === "sim") parts.push("busca incompleta");
+    if (typeof summary.ia_erro === "string") parts.push("IA com erro");
+    if (typeof summary.whatsapp_erro === "string") parts.push("WhatsApp com erro");
+    return parts.join(", ");
+  }
   const parts = Object.entries(summary)
     .filter(([k, v]) => k !== "ms" && k !== "alerta" && (typeof v === "number" || typeof v === "string"))
     .map(([k, v]) => `${k}: ${v}`);

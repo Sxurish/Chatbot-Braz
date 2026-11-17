@@ -220,7 +220,7 @@ function movementView(m: ProcessMovement) {
   return {
     data: day,
     descricao: m.description,
-    origem: m.source === "datajud" ? "tribunal" : "equipe",
+    origem: m.source === "datajud" ? "tribunal" : m.source === "djen" ? "intimacao_djen" : "equipe",
     travado: m.locked,
     ...(m.edited_at ? { editado_pela_equipe: true } : {}),
     ...(m.instance ? { instancia: m.instance } : {}),

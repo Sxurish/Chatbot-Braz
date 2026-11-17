@@ -11,6 +11,7 @@ import { tribunalFromCnj } from "@/lib/datajud/tribunals";
 import { brDate } from "../format";
 import { MovementsPanel } from "./movements-panel";
 import { ProcessDeadlinesCard } from "@/components/prazos/process-deadlines-card";
+import { ProcessPublicationsCard } from "@/components/intimacoes/process-publications-card";
 
 export default async function ProcessDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -56,6 +57,8 @@ export default async function ProcessDetailPage(props: { params: Promise<{ id: s
         </div>
 
         <div className="min-w-0 space-y-6">
+          <ProcessPublicationsCard processId={process.id} />
+
           <Card>
             <CardHeader className="p-4 sm:p-6">
               <CardTitle>Dados do processo</CardTitle>

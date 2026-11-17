@@ -98,6 +98,11 @@ export const ENV_SPECS: EnvSpec[] = [
     purpose: "Nome do modelo aprovado na Meta para o alerta de rotina com falha.",
     missing: "O alerta de falha só aparece nas Notificações do CRM, sem WhatsApp.",
   },
+  {
+    name: "WHATSAPP_INTIMACAO_TEMPLATE",
+    purpose: "Nome do modelo aprovado na Meta para o aviso de intimação nova.",
+    missing: "As intimações novas não são avisadas pelo WhatsApp (continuam na tela Intimações e no resumo diário).",
+  },
 ];
 
 export type EnvStatus = "configurada" | "faltando" | "padrao";
@@ -306,6 +311,8 @@ export const PHASE_TABLES: { table: string; sql: string }[] = [
   { table: "daily_digests", sql: "supabase/assistente-fase4.sql" },
   { table: "deadline_calculations", sql: "supabase/fase5-prazos.sql" },
   { table: "automation_runs", sql: "supabase/fase5-automacoes.sql" },
+  { table: "court_publications", sql: "supabase/fase5-intimacoes.sql" },
+  { table: "publication_sync_state", sql: "supabase/fase5-intimacoes.sql" },
 ];
 
 function isMissingTable(error: { code?: string; message?: string }): boolean {

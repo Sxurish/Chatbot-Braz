@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildHistory, runAgent, type MessagesClientLike } from "@/lib/assistant/agent";
 import { ASSISTANT_HISTORY_LIMIT, ASSISTANT_MODEL, isAssistantConfigured } from "@/lib/assistant/config";
 import { canWrite, confirmDraft, rejectDraft } from "@/lib/assistant/confirm-draft";
@@ -31,6 +32,14 @@ import { sendText } from "@/lib/channels/whatsapp";
 import type { InboundMessage } from "@/lib/channels/types";
 import { getSettings } from "@/lib/data/settings";
 import { digestToWhatsappText, type DailyDigest } from "@/lib/digest/build";
+import {
+  dbIntimacaoStore,
+  handleIntimacaoReply,
+  parseIntimacaoReply,
+  type IntimacaoOkResult,
+  type IntimacaoReply,
+  type IntimacaoWhatsappStore,
+} from "@/lib/intimacoes/whatsapp-ok";
 import { hasServiceRole, isSupabaseConfigured } from "@/lib/supabase/config";
 import { runAsTeamMember, type ServiceClient } from "@/lib/supabase/request-context";
 import { createClient, createServiceClient } from "@/lib/supabase/server";
@@ -49,6 +58,8 @@ import { whatsappNumberVariants } from "@/lib/whatsapp-number";
  * - Não há cookie: a identidade vem do número e a consulta usa o service
  *   role dentro de runAsTeamMember (ver src/lib/supabase/request-context.ts
  *   para a troca de segurança e as compensações no código).
+ * - Intimações (fase 5): sem rascunho esperando, o "OK" confirma o prazo da
+ *   intimação avisada pelo WhatsApp (regras em src/lib/intimacoes/whatsapp-ok.ts).
  */
 
 /** Uma conversa contínua por pessoa; parada há mais que isso, começa outra. */
@@ -182,6 +193,8 @@ export interface WhatsappDeps {
   /** Cliente Supabase (service role). Padrão: criado se houver a chave. */
   db?: ServiceClient | null;
   now?: () => Date;
+  /** Intimações avisadas pelo WhatsApp (falso nos testes). Padrão: banco (service role). */
+  intimacoes?: IntimacaoWhatsappStore | null;
 }
 
 export type WhatsappOutcome =
@@ -196,7 +209,10 @@ export type WhatsappOutcome =
   | "digest"
   | "answer"
   | "media"
-  | "error";
+  | "error"
+  | "intimacao_confirmed"
+  | "intimacao_list"
+  | "intimacao_link";
 
 export interface WhatsappResult {
   outcome: WhatsappOutcome;
@@ -258,6 +274,72 @@ async function confirmPending(session: AssistantSession, pending: DraftView[]): 
   return `${head}\n${lines.join("\n")}${tail}`;
 }
 
+/** Marca nas respostas do "OK" de intimação gravadas na conversa. */
+const INTIMACAO_MARK = "intimacao_whatsapp";
+
+/**
+ * "OK" de intimação (fase 5). Devolve null para seguir o caminho de antes:
+ * rascunho esperando o OK (tem prioridade), nenhuma intimação avisada a esta
+ * pessoa, ou "OK" sozinho que responde a outra coisa (resumo diário ou
+ * conversa com o assistente mais nova que o aviso).
+ */
+async function handleIntimacaoOk(
+  member: TeamUser,
+  text: string,
+  parsed: IntimacaoReply,
+  store: IntimacaoWhatsappStore,
+  now: Date
+): Promise<IntimacaoOkResult | null> {
+  const recent = await findRecentConversation(
+    member.id,
+    "whatsapp",
+    new Date(now.getTime() - WHATSAPP_CONVERSATION_IDLE_MS)
+  );
+  const drafts = recent ? await listDrafts(member.id, recent.id) : [];
+  const freshDraft = drafts.some(
+    (d) =>
+      d.status === "pendente" && (!d.createdAt || now.getTime() - Date.parse(d.createdAt) <= WHATSAPP_DRAFT_TTL_MS)
+  );
+  if (freshDraft) return null;
+
+  if (member.role === "visualizador") {
+    const mine = await store.listNotified(member.id);
+    if (mine.length === 0) return null;
+    return {
+      outcome: "intimacao_link",
+      text: `Seu perfil na Equipe é Visualizador: por ele não dá para confirmar intimações. Peça a um Advogado ou Admin, ou veja no painel: ${appBaseUrl()}/intimacoes`,
+    };
+  }
+
+  const history = recent ? await listMessages(member.id, recent.id, ASSISTANT_HISTORY_LIMIT) : [];
+  const result = await handleIntimacaoReply({
+    reply: parsed,
+    userId: member.id,
+    store,
+    baseUrl: appBaseUrl(),
+    plainOkAllowed: async (latestNotifiedAt) => {
+      const notifiedAt = Date.parse(latestNotifiedAt);
+      const digest = await latestSentDigest(member.id, now);
+      if (digest && Date.parse(digest.sentAt) > notifiedAt) return false;
+      const others = history.filter(
+        (m) => m.role === "assistant" && !(m.tools_used ?? []).some((t) => t.name === INTIMACAO_MARK)
+      );
+      const lastOther = others[others.length - 1];
+      return !(lastOther && Date.parse(lastOther.created_at) > notifiedAt);
+    },
+  });
+  if (!result) return null;
+
+  const conversationId = recent?.id ?? (await createConversation(member.id, `WhatsApp: ${text}`, "whatsapp"));
+  await saveMessage(member.id, conversationId, { role: "user", content: text });
+  await saveMessage(member.id, conversationId, {
+    role: "assistant",
+    content: result.text,
+    toolsUsed: [{ name: INTIMACAO_MARK, ok: result.outcome === "intimacao_confirmed", links: [] }],
+  });
+  return result;
+}
+
 /**
  * Trata uma mensagem de texto de alguém da equipe. Nunca lança erro: falhas
  * viram uma mensagem curta para a pessoa (e log no servidor).
@@ -294,6 +376,29 @@ export async function handleTeamWhatsapp(
       "rate_limited",
       rate === "warn" ? ["Muitas mensagens seguidas. Espere um minuto e mande de novo."] : []
     );
+  }
+
+  // Intimações (fase 5): o "OK" funciona mesmo sem a IA ligada e sem verba,
+  // porque só grava a sugestão que a pessoa já recebeu.
+  const intimacaoReply = parseIntimacaoReply(text);
+  const intimacoes =
+    deps.intimacoes !== undefined
+      ? deps.intimacoes
+      : db
+        ? dbIntimacaoStore(db as unknown as SupabaseClient)
+        : null;
+  if (intimacaoReply && intimacoes) {
+    try {
+      const handled = await runAsTeamMember({ client: db, user: member, channel: "whatsapp" }, () =>
+        handleIntimacaoOk(member, text, intimacaoReply, intimacoes, now)
+      );
+      if (handled) return reply(handled.outcome, splitWhatsappMessage(handled.text));
+    } catch (err) {
+      console.error("[whatsapp assistente] intimação", err);
+      return reply("error", [
+        `Não consegui conferir a intimação agora. Tente de novo ou abra o painel: ${appBaseUrl()}/intimacoes`,
+      ]);
+    }
   }
 
   const client = deps.client ?? (isAssistantConfigured() ? new Anthropic() : null);

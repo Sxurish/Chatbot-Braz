@@ -10,6 +10,7 @@ marcado na Equipe (no início, só o Dr. Jean).
 
 | Parte | O que entra | Link no CRM |
 | --- | --- | --- |
+| **Intimações para conferir** (fase 5) | Quantidade de intimações do DJEN esperando a conferência e as 3 mais antigas (por disponibilização). Só aparece quando há alguma | `/intimacoes/{id}`, `/intimacoes` |
 | **Prazos (7 dias)** | Próximo prazo dos processos, tarefas em aberto com vencimento e compromissos da agenda (agendados ou remarcados) de hoje até daqui a 7 dias. Diz quantos são **hoje** e **amanhã**. Prazos de processo **já vencidos** aparecem primeiro, em vermelho | `/processos/{id}`, `/tarefas`, `/agenda` |
 | **Leads novos** | Leads que chegaram desde o dia útil anterior às 9h (na segunda, cobre o fim de semana desde sexta às 9h) | `/leads/{id}` |
 | **Leads urgentes** | Leads de urgência alta ainda em aberto (sem contrato assinado, não perdidos, não descartados) | `/leads/{id}` |
@@ -156,6 +157,51 @@ novo. Detalhes em [AUTOMACOES.md](AUTOMACOES.md).
 - O resultado do envio (quantos foram, erros da Meta) fica gravado na
   execução que gerou o alerta, visível em **Saúde das automações**.
 
+## Aviso de intimação (modelo `intimacao_conferir`, fase 5)
+
+A cada hora, quando chega uma intimação nova no DJEN e a IA termina de ler, o
+CRM manda um WhatsApp (uma mensagem por intimação) para o advogado: processo,
+resumo, prazo sugerido, data final e o link. Ele responde **OK** para
+confirmar ou abre o painel. Regras completas em
+[INTIMACOES.md](INTIMACOES.md#whatsapp).
+
+### Modelo de mensagem na Meta (passo a passo)
+
+1. No **WhatsApp Manager**, vá em **Gerenciamento de conta → Modelos de
+   mensagem** e clique em **Criar modelo**.
+2. Categoria: **Utilidade (Utility)**. Tipo: **Padrão / Default**.
+3. Nome: `intimacao_conferir` (ou outro nome; use o mesmo em
+   `WHATSAPP_INTIMACAO_TEMPLATE`).
+4. Idioma: **Português (BR)** (`pt_BR`).
+5. Corpo, exatamente (o espaço antes do ponto depois de `{{5}}` é de
+   propósito: o ponto não gruda no link):
+
+   ```
+   Nova intimação para conferir. Processo: {{1}}. Resumo: {{2}}. Prazo sugerido: {{3}}. Data final: {{4}}. Responda OK para confirmar, ou abra o painel: {{5}} . Nada vira prazo sem a sua conferência.
+   ```
+
+6. Exemplos das variáveis (a Meta pede):
+   - `{{1}}` (processo): `1002345-67.2026.8.26.0554 (Cobrança), TJSP`
+   - `{{2}}` (resumo): `Intimação para réplica: O juiz mandou a parte autora se manifestar sobre a contestação`
+   - `{{3}}` (prazo sugerido): `15 dias úteis (CPC, art. 351)`
+   - `{{4}}` (data final): `quarta-feira, 09/12/2026`
+   - `{{5}}` (link): `https://chatbot-braz.vercel.app/intimacoes/exemplo`
+7. Sem cabeçalho, rodapé ou botões. Envie para análise.
+8. **Depois de aprovado**, preencha na Vercel
+   `WHATSAPP_INTIMACAO_TEMPLATE=intimacao_conferir` e faça um novo deploy.
+
+- **Não há nome padrão.** Sem `WHATSAPP_INTIMACAO_TEMPLATE` (ou sem
+  `WHATSAPP_ACCESS_TOKEN` e `WHATSAPP_PHONE_NUMBER_ID`), nenhum aviso sai; a
+  rotina conta as intimações como "puladas" e elas continuam na tela
+  `/intimacoes` e no resumo diário.
+- Quando a IA não sugeriu prazo, `{{3}}` diz isso (ex.: `sem leitura da IA,
+  confira no painel`) e `{{4}}` fica `a definir no painel`. O "OK" dessas não
+  confirma: a resposta manda o link.
+- Se a Meta recusar o modelo por ter link no corpo, troque o link por um botão
+  de URL dinâmica e avise o desenvolvedor (o código manda o link como `{{5}}`).
+- Responder "OK" abre a janela de 24h: a resposta do CRM (data final e link)
+  vai como mensagem comum.
+
 ## Assistente pelo WhatsApp
 
 O Dr. Jean (e quem mais o Admin autorizar) consulta o CRM pelo WhatsApp,
@@ -224,6 +270,9 @@ integração com a Meta estiver configurada (variáveis abaixo).
 4. O "OK" vale por **2 horas**. Rascunho mais antigo que isso é descartado;
    peça de novo.
 5. Quem é **Visualizador** só consulta: o assistente não prepara cadastros.
+6. Intimações (fase 5): sem rascunho esperando, o "OK" confirma o prazo da
+   intimação avisada pelo WhatsApp. O rascunho sempre tem prioridade. Regras
+   em [INTIMACOES.md](INTIMACOES.md#ok-para-confirmar).
 
 Assim como no painel, nada é gravado sem o "OK", os dados são validados de
 novo no servidor, cada rascunho só pode ser confirmado uma vez e cada

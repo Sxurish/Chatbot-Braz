@@ -414,6 +414,16 @@ function SourceBadge({ movement: m }: { movement: MovementWithNames }) {
       </span>
     );
   }
+  if (m.source === "djen") {
+    return (
+      <span
+        title="Intimação do DJEN conferida pelo advogado"
+        className="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-[11px] font-medium text-violet-800"
+      >
+        Intimação
+      </span>
+    );
+  }
   const inst = m.instance ? INSTANCE_LABELS[m.instance] : undefined;
   return (
     <span

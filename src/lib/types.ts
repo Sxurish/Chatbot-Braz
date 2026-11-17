@@ -289,7 +289,7 @@ export interface Process {
   updated_at: string;
 }
 
-export type MovementSource = "datajud" | "manual";
+export type MovementSource = "datajud" | "manual" | "djen";
 
 /** Andamento de um processo (tabela process_movements). */
 export interface ProcessMovement {

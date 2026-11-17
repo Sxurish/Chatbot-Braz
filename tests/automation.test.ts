@@ -321,6 +321,7 @@ describe("diagnóstico", () => {
     WHATSAPP_APP_SECRET: "appsecret-SEGREDO-2",
     WHATSAPP_DIGEST_TEMPLATE: "modelo-segredo-resumo",
     WHATSAPP_ALERT_TEMPLATE: "modelo-segredo-alerta",
+    WHATSAPP_INTIMACAO_TEMPLATE: "modelo-segredo-intimacao",
   };
 
   it("nunca devolve o valor (nem pedaço) de um segredo", () => {

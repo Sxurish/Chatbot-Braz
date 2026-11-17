@@ -69,6 +69,7 @@ export async function updateSession(request: NextRequest) {
 const CRM_PREFIXES = [
   "/dashboard",
   "/prazos",
+  "/intimacoes",
   "/leads",
   "/clientes",
   "/conversas",

@@ -20,7 +20,7 @@ mais de 90 dias são apagadas sozinhas.
 | --- | --- | --- |
 | Andamentos dos tribunais | Todo dia às 6h | Busca no DataJud os andamentos novos dos processos com número CNJ |
 | Resumo diário | Dias úteis às 9h | Monta e manda o resumo do dia pelo WhatsApp |
-| Intimações | De hora em hora | Lê as intimações e cria os prazos (quando for ativada) |
+| Intimações | De hora em hora, das 6h às 22h (Supabase) e às 7h (Vercel, reserva) | Busca no DJEN, a IA lê e avisa pelo WhatsApp; o prazo nasce só na conferência. Veja [INTIMACOES.md](INTIMACOES.md) |
 
 Cada cartão traz:
 

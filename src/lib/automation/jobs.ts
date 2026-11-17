@@ -33,8 +33,9 @@ export const AUTOMATION_JOBS: AutomationJob[] = [
   {
     id: "intimacoes",
     label: "Intimações",
-    schedule: "De hora em hora",
-    description: "Lê as intimações publicadas e cria os prazos.",
+    schedule: "De hora em hora, das 6h às 22h",
+    description:
+      "Busca no DJEN as intimações da OAB 459159/SP, a IA lê e avisa pelo WhatsApp. O prazo só é criado depois da conferência.",
     path: "/api/cron/intimacoes",
   },
 ];

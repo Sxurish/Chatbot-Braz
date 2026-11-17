@@ -67,6 +67,7 @@ const NAV_GROUPS: { title: string; items: NavItem[] }[] = [
     items: [
       { href: "/agenda", label: "Agenda", icon: CalendarDays },
       { href: "/tarefas", label: "Tarefas", icon: ListChecks },
+      { href: "/intimacoes", label: "Intimações", icon: Gavel },
       { href: "/prazos", label: "Prazos", icon: CalendarClock },
       { href: "/notificacoes", label: "Notificações", icon: Bell },
       { href: "/financeiro", label: "Financeiro", icon: Wallet, adminOnly: true },

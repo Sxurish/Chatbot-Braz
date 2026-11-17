@@ -37,13 +37,22 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
   publicação no DJEN, recesso, feriados e suspensões com a fonte), conta passo a
   passo, confirmação que cria a tarefa e histórico que o banco não deixa editar
   nem apagar. Guia em **`docs/PRAZOS.md`**.
+- **Intimações** (fase 5): o CRM busca no DJEN (Comunica PJe do CNJ) as
+  intimações da OAB 459159/SP de hora em hora, das 6h às 22h, sem duplicar,
+  liga ao processo pelo número CNJ, a IA lê e sugere o prazo e o advogado
+  confere na tela **Intimações** (ou responde "OK" no WhatsApp). Só depois da
+  conferência o CRM cria o prazo, o andamento e a tarefa. Rota
+  `GET /api/cron/intimacoes` (Bearer `CRON_SECRET`), chamada de hora em hora
+  pelo Supabase (`supabase/fase5-intimacoes-agendamento.sql`) e uma vez por dia
+  pela Vercel, como reserva. Guia em **`docs/INTIMACOES.md`**.
 - **Saúde das automações** (fase 5, só Admin): última execução de cada rotina,
   erros, alerta na 2ª falha seguida e diagnóstico das variáveis e conexões. Guia
   em **`docs/AUTOMACOES.md`**.
 - Limite de gasto mensal (US$ 50 por padrão) com aviso em 80%.
 - Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
-  `supabase/assistente-fase1.sql` a `assistente-fase4.sql`, `fase5-prazos.sql` e
-  `fase5-automacoes.sql`.
+  `supabase/assistente-fase1.sql` a `assistente-fase4.sql`, `fase5-prazos.sql`,
+  `fase5-automacoes.sql`, `fase5-intimacoes.sql` e, à parte,
+  `fase5-intimacoes-agendamento.sql`.
 
 ### 🔑 Primeiro acesso por convite
 
