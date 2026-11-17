@@ -10,7 +10,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -31,6 +31,7 @@ import { getLead } from "@/lib/data/leads";
 import { listDocumentsByLead } from "@/lib/data/crm";
 import { listTemplates } from "@/lib/data/templates-read";
 import { formatDate, formatDateTime } from "@/lib/utils";
+import { SOURCE_LABELS } from "@/lib/data/cadastros-rules";
 
 export default async function LeadDetailPage(
   props: {
@@ -65,9 +66,14 @@ export default async function LeadDetailPage(
           <div className="flex flex-wrap gap-2">
             <LeadHeaderActions leadId={lead.id} />
             <GenerateDocumentButton leadId={lead.id} templates={templates} />
-            <Button variant="gold" size="sm">
+            <a
+              href={`/leads/${lead.id}/resumo`}
+              target="_blank"
+              rel="noopener"
+              className={buttonVariants({ variant: "gold", size: "sm" })}
+            >
               <FileText className="h-4 w-4" /> Exportar resumo
-            </Button>
+            </a>
           </div>
         }
       />
@@ -204,7 +210,9 @@ export default async function LeadDetailPage(
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Origem</span>
-                <span className="font-medium text-slate-900">{lead.source}</span>
+                <span className="font-medium text-slate-900">
+                  {SOURCE_LABELS[lead.source] ?? lead.source}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-500">Processo</span>

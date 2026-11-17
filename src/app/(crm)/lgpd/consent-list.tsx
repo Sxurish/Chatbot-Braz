@@ -95,6 +95,7 @@ export function ConsentList({
             <option value="chatbot">Chatbot (site)</option>
             <option value="whatsapp">WhatsApp</option>
             <option value="instagram">Instagram</option>
+            <option value="manual">Cadastro manual</option>
           </Select>
         </div>
         <div className="space-y-1">

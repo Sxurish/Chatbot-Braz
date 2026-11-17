@@ -77,8 +77,6 @@ function SubmitInvite() {
 
 export function InviteButton({ loginUrl }: { loginUrl: string }) {
   const [open, setOpen] = useState(false);
-  const [state, action] = useActionState(createInviteAction, {} as TeamActionState);
-  const [email, setEmail] = useState("");
 
   return (
     <>
@@ -91,68 +89,81 @@ export function InviteButton({ loginUrl }: { loginUrl: string }) {
         title="Convidar pessoa para a equipe"
         description={`A pessoa entra em "Primeiro acesso" na tela de login, confirma um código enviado por e-mail e cria a senha. O convite vale ${INVITE_VALIDITY_DAYS} dias.`}
       >
-        {state.ok ? (
-          <div className="space-y-4">
-            <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
-              <p>{state.message} Mande as instruções para a pessoa (por WhatsApp, por exemplo).</p>
-            </div>
-            <pre className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-xs text-slate-600">
-              {instructions(email, loginUrl)}
-            </pre>
-            <div className="flex justify-end gap-2">
-              <CopyInstructions email={email} loginUrl={loginUrl} />
-              <Button type="button" onClick={() => setOpen(false)}>
-                Concluir
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <form action={action} className="space-y-4">
-            <div className="space-y-1.5">
-              <label htmlFor="invite-name" className="block text-sm leading-6 font-medium text-slate-700">
-                Nome
-              </label>
-              <Input id="invite-name" name="name" required maxLength={120} placeholder="Nome completo" />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="invite-email" className="block text-sm leading-6 font-medium text-slate-700">
-                E-mail
-              </label>
-              <Input
-                id="invite-email"
-                name="email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
-                placeholder="pessoa@escritoriobraz.adv.br"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <label htmlFor="invite-role" className="block text-sm leading-6 font-medium text-slate-700">
-                Papel
-              </label>
-              <Select id="invite-role" name="role" defaultValue="atendente">
-                {ROLE_OPTIONS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </Select>
-              <p className="text-xs text-slate-500">Financeiro e Contratos só aparecem para Administrador.</p>
-            </div>
-            {state.error && (
-              <p role="alert" className="flex items-center gap-1.5 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4" /> {state.error}
-              </p>
-            )}
-            <div className="flex justify-end">
-              <SubmitInvite />
-            </div>
-          </form>
-        )}
+        {/* Cada abertura começa um convite novo. Antes, depois do primeiro
+            convite, a janela reabria na tela de "convite criado". */}
+        {open && <InviteContent loginUrl={loginUrl} onDone={() => setOpen(false)} />}
       </Dialog>
+    </>
+  );
+}
+
+function InviteContent({ loginUrl, onDone }: { loginUrl: string; onDone: () => void }) {
+  const [state, action] = useActionState(createInviteAction, {} as TeamActionState);
+  const [email, setEmail] = useState("");
+
+  return (
+    <>
+    {state.ok ? (
+      <div className="space-y-4">
+        <div className="flex items-start gap-2 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          <p>{state.message} Mande as instruções para a pessoa (por WhatsApp, por exemplo).</p>
+        </div>
+        <pre className="whitespace-pre-wrap rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+          {instructions(email, loginUrl)}
+        </pre>
+        <div className="flex justify-end gap-2">
+          <CopyInstructions email={email} loginUrl={loginUrl} />
+          <Button type="button" onClick={onDone}>
+            Concluir
+          </Button>
+        </div>
+      </div>
+    ) : (
+      <form action={action} className="space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="invite-name" className="block text-sm leading-6 font-medium text-slate-700">
+            Nome
+          </label>
+          <Input id="invite-name" name="name" required maxLength={120} placeholder="Nome completo" />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="invite-email" className="block text-sm leading-6 font-medium text-slate-700">
+            E-mail
+          </label>
+          <Input
+            id="invite-email"
+            name="email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value.trim().toLowerCase())}
+            placeholder="pessoa@escritoriobraz.adv.br"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="invite-role" className="block text-sm leading-6 font-medium text-slate-700">
+            Papel
+          </label>
+          <Select id="invite-role" name="role" defaultValue="atendente">
+            {ROLE_OPTIONS.map((r) => (
+              <option key={r.value} value={r.value}>
+                {r.label}
+              </option>
+            ))}
+          </Select>
+          <p className="text-xs text-slate-500">Financeiro e Contratos só aparecem para Administrador.</p>
+        </div>
+        {state.error && (
+          <p role="alert" className="flex items-center gap-1.5 text-sm text-red-600">
+            <AlertCircle className="h-4 w-4" /> {state.error}
+          </p>
+        )}
+        <div className="flex justify-end">
+          <SubmitInvite />
+        </div>
+      </form>
+    )}
     </>
   );
 }

@@ -3,10 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { requireWriterAction } from "@/lib/auth/require-admin";
 import type { DocumentCategory } from "@/lib/types";
 
+// Arquivo "use server": só pode exportar funções async. Exportar estas
+// constantes derrubava TODAS as ações da página do lead (tarefa, follow-up,
+// caso, agendar, tornar cliente, enviar documento) com erro 500.
+
 /** Tipos de arquivo aceitos para upload (seção 34 do prompt). */
-export const ACCEPTED_MIME = [
+const ACCEPTED_MIME = [
   "application/pdf",
   "image/png",
   "image/jpeg",
@@ -17,7 +22,7 @@ export const ACCEPTED_MIME = [
 ];
 
 /** Tamanho máximo por arquivo: 10 MB. */
-export const MAX_FILE_SIZE = 10 * 1024 * 1024;
+const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
 const BUCKET = "documents";
 
@@ -50,10 +55,17 @@ export async function uploadDocumentAction(
   if (!ACCEPTED_MIME.includes(file.type)) {
     return { error: "Tipo de arquivo não permitido." };
   }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
 
   if (!isSupabaseConfigured()) {
     // Modo demonstração: validação ok, sem persistência real.
     return { ok: true };
+  }
+
+  // O id do lead vira parte do caminho do arquivo: só aceita UUID.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(leadId ?? "")) {
+    return { error: "Lead inválido." };
   }
 
   const supabase = await createClient();
@@ -65,6 +77,7 @@ export async function uploadDocumentAction(
     .upload(path, file, { upsert: false, contentType: file.type });
 
   if (uploadError) {
+    console.error("[documentos] falha no upload", uploadError.message);
     return { error: "Falha no upload do arquivo." };
   }
 
@@ -82,11 +95,13 @@ export async function uploadDocumentAction(
   });
 
   if (insertError) {
+    console.error("[documentos] falha ao registrar", insertError.message);
     // Reverte o arquivo órfão no storage.
     await supabase.storage.from(BUCKET).remove([path]);
     return { error: "Falha ao registrar o documento." };
   }
 
   revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/documentos");
   return { ok: true };
 }

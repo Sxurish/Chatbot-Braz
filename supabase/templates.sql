@@ -2,9 +2,8 @@
 -- Automação documental — templates de documentos DOCX.
 -- Execute APÓS o schema.sql.
 --
--- IMPORTANTE: além desta migração, é preciso criar manualmente no Supabase
--- Dashboard um bucket privado chamado "document_templates":
---   Storage → New bucket → Name: document_templates → Public: NO
+-- O bucket privado "document_templates" e as regras de acesso dele são
+-- criados por supabase/correcao-cadastros.sql (também na instalação completa).
 -- ============================================================================
 
 create table if not exists public.document_templates (

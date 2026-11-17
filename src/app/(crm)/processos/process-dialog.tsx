@@ -74,6 +74,35 @@ export function ProcessDialog({
   cases: SelectOption[];
   onClose: () => void;
 }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={process ? "Editar processo" : "Novo processo"}
+      className="max-w-lg"
+    >
+      {/* O formulário (e o resultado do envio) nasce de novo a cada abertura. */}
+      {open && (
+        <ProcessForm
+          key={process?.id ?? "novo"}
+          process={process}
+          cases={cases}
+          onClose={onClose}
+        />
+      )}
+    </Dialog>
+  );
+}
+
+function ProcessForm({
+  process,
+  cases,
+  onClose,
+}: {
+  process: Process | null;
+  cases: SelectOption[];
+  onClose: () => void;
+}) {
   const isEdit = Boolean(process);
   const [state, action] = useActionState(
     isEdit ? updateProcessAction : createProcessAction,
@@ -88,12 +117,6 @@ export function ProcessDialog({
   }, [state.ok, onClose]);
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={isEdit ? "Editar processo" : "Novo processo"}
-      className="max-w-lg"
-    >
       <form action={action} className="space-y-3">
         {isEdit && process && (
           <input type="hidden" name="id" value={process.id} />
@@ -184,7 +207,6 @@ export function ProcessDialog({
           <Submit label={isEdit ? "Salvar" : "Criar processo"} />
         </div>
       </form>
-    </Dialog>
   );
 }
 

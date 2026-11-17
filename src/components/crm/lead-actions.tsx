@@ -11,6 +11,7 @@ import {
   Loader2,
   AlertCircle,
   Info,
+  CheckCircle2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,6 +49,12 @@ function Feedback({ state }: { state: ActionState }) {
     return (
       <p className="flex items-center gap-1.5 text-sm text-amber-600">
         <Info className="h-4 w-4" /> {state.message}
+      </p>
+    );
+  if (state.ok)
+    return (
+      <p className="flex items-center gap-1.5 text-sm text-emerald-600">
+        <CheckCircle2 className="h-4 w-4" /> Salvo.
       </p>
     );
   return null;
@@ -127,6 +134,14 @@ export function LeadHeaderActions({ leadId }: { leadId: string }) {
         <input type="hidden" name="lead_id" value={leadId} />
         <ConvertButton ok={convertState.ok} />
       </form>
+      {(convertState.error || convertState.message) && (
+        <p
+          role="status"
+          className={`basis-full text-xs ${convertState.error ? "text-red-600" : "text-amber-600"}`}
+        >
+          {convertState.error ?? convertState.message}
+        </p>
+      )}
 
       <AppointmentDialog
         leadId={leadId}
@@ -163,7 +178,15 @@ function useCloseOnSuccess(state: ActionState, onClose: () => void) {
   }, [state.ok, onClose]);
 }
 
-function TaskDialog({
+function TaskDialog(props: { leadId: string; open: boolean; onClose: () => void }) {
+  // O formulário (e o resultado do envio) só existe com a janela aberta: cada
+  // abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+  // fechava sozinha.
+  if (!props.open) return null;
+  return <TaskDialogContent {...props} />;
+}
+
+function TaskDialogContent({
   leadId,
   open,
   onClose,
@@ -212,7 +235,15 @@ function TaskDialog({
   );
 }
 
-function FollowUpDialog({
+function FollowUpDialog(props: { leadId: string; open: boolean; onClose: () => void }) {
+  // O formulário (e o resultado do envio) só existe com a janela aberta: cada
+  // abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+  // fechava sozinha.
+  if (!props.open) return null;
+  return <FollowUpDialogContent {...props} />;
+}
+
+function FollowUpDialogContent({
   leadId,
   open,
   onClose,
@@ -251,7 +282,15 @@ function FollowUpDialog({
   );
 }
 
-function AppointmentDialog({
+function AppointmentDialog(props: { leadId: string; open: boolean; onClose: () => void }) {
+  // O formulário (e o resultado do envio) só existe com a janela aberta: cada
+  // abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+  // fechava sozinha.
+  if (!props.open) return null;
+  return <AppointmentDialogContent {...props} />;
+}
+
+function AppointmentDialogContent({
   leadId,
   open,
   onClose,
@@ -308,7 +347,15 @@ function AppointmentDialog({
   );
 }
 
-function CaseDialog({
+function CaseDialog(props: { leadId: string; open: boolean; onClose: () => void }) {
+  // O formulário (e o resultado do envio) só existe com a janela aberta: cada
+  // abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+  // fechava sozinha.
+  if (!props.open) return null;
+  return <CaseDialogContent {...props} />;
+}
+
+function CaseDialogContent({
   leadId,
   open,
   onClose,

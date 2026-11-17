@@ -126,7 +126,7 @@ function DeleteInner() {
 
 function DeleteButton({ id }: { id: string }) {
   const [armed, setArmed] = useState(false);
-  const [, action] = useActionState(deletePaymentAction, {});
+  const [state, action] = useActionState(deletePaymentAction, {} as { error?: string });
 
   if (!armed) {
     return (
@@ -151,6 +151,7 @@ function DeleteButton({ id }: { id: string }) {
     >
       <input type="hidden" name="id" value={id} />
       <DeleteInner />
+      {state.error && <span role="alert" className="text-xs text-red-600">{state.error}</span>}
       <button
         type="button"
         onClick={() => setArmed(false)}

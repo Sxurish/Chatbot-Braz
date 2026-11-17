@@ -15,7 +15,8 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 
 1. `supabase/schema.sql`   — ENUMs, tabelas, triggers e RLS.
 2. `supabase/auth.sql`     — provisionamento automático de perfil de usuário.
-3. `supabase/storage.sql`  — bucket privado `documents` + políticas.
+3. `supabase/storage.sql`  — bucket privado `documents` + políticas
+   (o bucket `document_templates` vem em `supabase/correcao-cadastros.sql`).
 4. `supabase/channels.sql` — colunas de canal (WhatsApp/Instagram) + dedup.
 
 > **Atalho:** `supabase/instalacao-completa.sql` junta todos os scripts
@@ -27,7 +28,7 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 > **Projeto que já tem as tabelas?** Rode só `supabase/atualizacao-2026-11-16.sql`
 > e depois `supabase/assistente-fase1.sql`, `supabase/convites.sql` e
 > `supabase/assistente-fase2.sql`, `assistente-fase3.sql`, `assistente-fase4.sql`, `fase5-prazos.sql`,
-> `fase5-automacoes.sql` e `fase5-intimacoes.sql`.
+> `fase5-automacoes.sql`, `fase5-intimacoes.sql` e `correcao-cadastros.sql`.
 >
 > **Intimações de hora em hora (opcional, depois do resto):** no SQL Editor,
 > guarde o `CRON_SECRET` no Vault digitando o valor à mão

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { requireAdminAction } from "@/lib/auth/require-admin";
+import { requireAdminAction, requireWriterAction } from "@/lib/auth/require-admin";
 import { getSettings } from "@/lib/data/settings";
 import { LEGAL_AREA_LABELS } from "@/lib/constants";
 import {
@@ -93,9 +93,10 @@ export async function uploadTemplateAction(
     .upload(path, buffer, { upsert: false, contentType: file.type });
 
   if (uploadError) {
+    console.error("[templates] falha no upload", uploadError.message);
     return {
       error:
-        "Falha no upload. Verifique se o bucket document_templates existe no Supabase Storage.",
+        "Falha no upload. Rode supabase/correcao-cadastros.sql no Supabase (cria o bucket document_templates e as regras de acesso).",
     };
   }
 
@@ -114,6 +115,7 @@ export async function uploadTemplateAction(
     .single();
 
   if (insertError) {
+    console.error("[templates] falha ao registrar", insertError.message);
     await supabase.storage.from(TEMPLATE_BUCKET).remove([path]);
     return { error: "Falha ao registrar o template." };
   }
@@ -127,7 +129,15 @@ export async function uploadTemplateAction(
 // Atualizar template (nome/descrição/categoria/ativo) — admin
 // ---------------------------------------------------------------------------
 const updateSchema = z.object({
-  id: z.string().uuid(),
+  // No modo demonstração os registros de exemplo usam ids curtos.
+  id: z
+    .string()
+    .refine(
+      (v) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+        !isSupabaseConfigured(),
+      "Template inválido."
+    ),
   name: z.string().min(2, "Informe um nome."),
   description: z.string().optional(),
   category: z.string().min(1).default("outros"),
@@ -218,7 +228,13 @@ export async function generateDocumentAction(
   const templateId = String(formData.get("template_id") ?? "");
   const leadId = String(formData.get("lead_id") ?? "");
   if (!templateId || !leadId) return { error: "Dados incompletos." };
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
+  // O id do lead vira parte do caminho do arquivo: só aceita UUID.
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(leadId)) {
+    return { error: "Lead inválido." };
+  }
 
   const supabase = await createClient();
   const user = await getCurrentUser();

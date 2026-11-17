@@ -64,6 +64,25 @@ export function KnowledgeDialog({
   defaultCategory,
 }: KnowledgeDialogProps) {
   const isEdit = Boolean(entry);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Editar entrada" : "Nova entrada"}
+      className="max-w-lg"
+    >
+      {/* O formulário (e o resultado do envio) nasce de novo a cada abertura. */}
+      {open && <KnowledgeForm onClose={onClose} entry={entry} defaultCategory={defaultCategory} />}
+    </Dialog>
+  );
+}
+
+function KnowledgeForm({
+  onClose,
+  entry,
+  defaultCategory,
+}: Omit<KnowledgeDialogProps, "open">) {
+  const isEdit = Boolean(entry);
   const action = isEdit ? updateKnowledgeAction : createKnowledgeAction;
   const [state, formAction] = useActionState(action, initial);
 
@@ -82,79 +101,72 @@ export function KnowledgeDialog({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={isEdit ? "Editar entrada" : "Nova entrada"}
-      className="max-w-lg"
-    >
-      <form action={formAction} className="space-y-3">
-        {isEdit && entry && <input type="hidden" name="id" value={entry.id} />}
+    <form action={formAction} className="space-y-3">
+      {isEdit && entry && <input type="hidden" name="id" value={entry.id} />}
 
-        <div className="space-y-1.5">
-          <FieldLabel>Categoria *</FieldLabel>
-          <Select
-            name="category"
-            defaultValue={entry?.category ?? defaultCategory ?? "mensagem_padrao"}
-            required
-          >
-            {(Object.keys(KNOWLEDGE_CATEGORIES) as KnowledgeCategory[]).map((c) => (
-              <option key={c} value={c}>
-                {KNOWLEDGE_CATEGORIES[c].label}
-              </option>
-            ))}
-          </Select>
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Categoria *</FieldLabel>
+        <Select
+          name="category"
+          defaultValue={entry?.category ?? defaultCategory ?? "mensagem_padrao"}
+          required
+        >
+          {(Object.keys(KNOWLEDGE_CATEGORIES) as KnowledgeCategory[]).map((c) => (
+            <option key={c} value={c}>
+              {KNOWLEDGE_CATEGORIES[c].label}
+            </option>
+          ))}
+        </Select>
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Título *</FieldLabel>
-          <Input
-            name="title"
-            defaultValue={entry?.title ?? ""}
-            required
-            maxLength={200}
-            placeholder="Ex.: Saudação inicial, Trabalhista, Liminar..."
-          />
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Título *</FieldLabel>
+        <Input
+          name="title"
+          defaultValue={entry?.title ?? ""}
+          required
+          maxLength={200}
+          placeholder="Ex.: Saudação inicial, Trabalhista, Liminar..."
+        />
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Conteúdo</FieldLabel>
-          <Textarea
-            name="content"
-            rows={6}
-            defaultValue={entry?.content ?? ""}
-            maxLength={5000}
-            placeholder={
-              helpText[
-                (entry?.category ?? defaultCategory ?? "mensagem_padrao") as KnowledgeCategory
-              ]
-            }
-          />
-          <p className="text-xs text-slate-500">
-            Máx. 5000 caracteres. O chatbot consome apenas entradas ativas.
-          </p>
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Conteúdo</FieldLabel>
+        <Textarea
+          name="content"
+          rows={6}
+          defaultValue={entry?.content ?? ""}
+          maxLength={5000}
+          placeholder={
+            helpText[
+              (entry?.category ?? defaultCategory ?? "mensagem_padrao") as KnowledgeCategory
+            ]
+          }
+        />
+        <p className="text-xs text-slate-500">
+          Máx. 5000 caracteres. O chatbot consome apenas entradas ativas.
+        </p>
+      </div>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
-            name="is_active"
-            value="true"
-            defaultChecked={entry?.is_active ?? true}
-            className="h-4 w-4 rounded-sm border-slate-300 text-brand-primary focus:ring-brand-primary"
-          />
-          Entrada ativa (visível para o chatbot)
-        </label>
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          name="is_active"
+          value="true"
+          defaultChecked={entry?.is_active ?? true}
+          className="h-4 w-4 rounded-sm border-slate-300 text-brand-primary focus:ring-brand-primary"
+        />
+        Entrada ativa (visível para o chatbot)
+      </label>
 
-        <Feedback state={state} />
+      <Feedback state={state} />
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Submit label={isEdit ? "Salvar alterações" : "Criar entrada"} />
-        </div>
-      </form>
-    </Dialog>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Submit label={isEdit ? "Salvar alterações" : "Criar entrada"} />
+      </div>
+    </form>
   );
 }
