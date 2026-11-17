@@ -64,7 +64,12 @@ export function buildDigestTemplatePayload(input: {
   };
 }
 
-function explainGraphError(status: number, body: unknown, templateName: string): string {
+function varList(count: number): string {
+  const vars = Array.from({ length: Math.max(count, 1) }, (_, i) => `{{${i + 1}}}`);
+  return vars.length === 1 ? vars[0] : `${vars.slice(0, -1).join(", ")} e ${vars[vars.length - 1]}`;
+}
+
+function explainGraphError(status: number, body: unknown, templateName: string, paramCount = 2): string {
   const err = (body as { error?: { code?: number; message?: string; error_data?: { details?: string } } } | null)
     ?.error;
   const code = err?.code;
@@ -75,7 +80,7 @@ function explainGraphError(status: number, body: unknown, templateName: string):
     return `O modelo "${templateName}" não existe ou ainda não foi aprovado pela Meta para este idioma.`;
   }
   if (code === 132000 || code === 132012) {
-    return `O modelo "${templateName}" aprovado na Meta não tem as variáveis {{1}} e {{2}} esperadas. Confira o texto do modelo.`;
+    return `O modelo "${templateName}" aprovado na Meta não tem as variáveis ${varList(paramCount)} esperadas. Confira o texto do modelo.`;
   }
   if (code === 132015 || code === 132016) {
     return `O modelo "${templateName}" está pausado ou desativado pela Meta.`;
@@ -97,6 +102,42 @@ export async function sendDigestTemplate(
   deps: { fetchImpl?: typeof fetch; env?: Env } = {}
 ): Promise<DigestSendResult> {
   const env = deps.env ?? process.env;
+  const { name, lang } = digestTemplateConfig(env);
+  return sendWhatsappTemplate({ to: input.to, name, lang, build: (to) => buildDigestTemplatePayload({ ...input, to, name, lang }), paramCount: 2 }, deps);
+}
+
+/**
+ * Monta o corpo de um modelo qualquer com parâmetros de texto (na ordem
+ * {{1}}, {{2}}...). Cada item: [texto, tamanho máximo].
+ */
+export function buildTemplatePayload(input: { to: string; name: string; lang: string; params: [string, number][] }) {
+  return {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: input.to,
+    type: "template",
+    template: {
+      name: input.name,
+      language: { code: input.lang },
+      components: [
+        {
+          type: "body",
+          parameters: input.params.map(([text, max]) => ({ type: "text", text: param(text, max) })),
+        },
+      ],
+    },
+  };
+}
+
+/**
+ * Envia um modelo aprovado da Meta (usado pelo resumo diário e pelo alerta das
+ * automações). Nunca lança erro: devolve { ok, error } em português.
+ */
+export async function sendWhatsappTemplate(
+  input: { to: string; name: string; lang: string; build: (to: string) => unknown; paramCount: number },
+  deps: { fetchImpl?: typeof fetch; env?: Env } = {}
+): Promise<DigestSendResult> {
+  const env = deps.env ?? process.env;
   const doFetch = deps.fetchImpl ?? fetch;
   const token = env.WHATSAPP_ACCESS_TOKEN;
   const phoneId = env.WHATSAPP_PHONE_NUMBER_ID;
@@ -109,8 +150,8 @@ export async function sendDigestTemplate(
   const to = input.to.replace(/\D/g, "");
   if (to.length < 10) return { ok: false, error: "Número de WhatsApp inválido." };
 
-  const { name, lang } = digestTemplateConfig(env);
-  const payload = buildDigestTemplatePayload({ ...input, to, name, lang });
+  const name = input.name;
+  const payload = input.build(to);
 
   try {
     const res = await doFetch(`https://graph.facebook.com/${GRAPH_VERSION}/${encodeURIComponent(phoneId)}/messages`, {
@@ -125,7 +166,7 @@ export async function sendDigestTemplate(
     } catch {
       body = null;
     }
-    if (!res.ok) return { ok: false, error: explainGraphError(res.status, body, name) };
+    if (!res.ok) return { ok: false, error: explainGraphError(res.status, body, name, input.paramCount) };
     const messageId = (body as { messages?: { id?: string }[] } | null)?.messages?.[0]?.id ?? null;
     return { ok: true, messageId };
   } catch (err) {

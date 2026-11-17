@@ -1,3 +1,4 @@
+import { getSessionProfile } from "@/lib/auth/current-user";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
@@ -57,10 +58,11 @@ export async function listFollowUps(): Promise<FollowUp[]> {
 export async function listNotifications(): Promise<AppNotification[]> {
   if (!isSupabaseConfigured()) return mockNotifications;
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .order("created_at", { ascending: false });
+  const { user } = await getSessionProfile();
+  // Cada pessoa vê as notificações dela e as gerais (sem destinatário).
+  let query = supabase.from("notifications").select("*");
+  query = user ? query.or(`user_id.is.null,user_id.eq.${user.id}`) : query.is("user_id", null);
+  const { data, error } = await query.order("created_at", { ascending: false });
   if (error || !data) return []; // com Supabase ligado, nunca mostrar dados fictícios
   return data as AppNotification[];
 }

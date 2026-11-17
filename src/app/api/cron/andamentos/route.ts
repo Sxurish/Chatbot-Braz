@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/server";
 import { hasServiceRole } from "@/lib/supabase/config";
 import { syncDueProcesses } from "@/lib/datajud/sync";
+import { recordRun } from "@/lib/automation/runs";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;
@@ -25,10 +26,24 @@ export async function GET(req: Request) {
   }
   const started = Date.now();
   try {
-    const totals = await syncDueProcesses(createServiceClient(), {
-      // Para antes do limite da função, deixando folga para terminar o que começou.
-      deadlineMs: started + (maxDuration - 60) * 1000,
-    });
+    const supabase = createServiceClient();
+    // Registra a execução em automation_runs (Saúde das automações). Não muda a rotina.
+    const totals = await recordRun(
+      "andamentos",
+      () =>
+        syncDueProcesses(supabase, {
+          // Para antes do limite da função, deixando folga para terminar o que começou.
+          deadlineMs: started + (maxDuration - 60) * 1000,
+        }),
+      {
+        client: supabase,
+        summarize: (t) => ({ ...t }),
+        outcome: (t) =>
+          t.checked > 0 && t.failed === t.checked
+            ? { ok: false, error: `Todas as ${t.checked} consultas ao DataJud falharam.` }
+            : { ok: true },
+      }
+    );
     return Response.json({ ok: true, ...totals, ms: Date.now() - started });
   } catch (err) {
     return Response.json({ ok: false, error: (err as Error).message }, { status: 500 });

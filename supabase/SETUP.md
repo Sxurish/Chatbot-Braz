@@ -25,7 +25,8 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 >
 > **Projeto que já tem as tabelas?** Rode só `supabase/atualizacao-2026-11-16.sql`
 > e depois `supabase/assistente-fase1.sql`, `supabase/convites.sql` e
-> `supabase/assistente-fase2.sql`, `assistente-fase3.sql` e `assistente-fase4.sql`.
+> `supabase/assistente-fase2.sql`, `assistente-fase3.sql`, `assistente-fase4.sql`, `fase5-prazos.sql` e
+> `fase5-automacoes.sql`.
 
 > Dica: dá para rodar todos de uma vez colando um após o outro.
 

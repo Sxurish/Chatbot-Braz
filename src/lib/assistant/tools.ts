@@ -16,6 +16,10 @@ import {
 } from "@/lib/data/fase6";
 import { listMovements } from "@/lib/data/movements";
 import { listRecentMovements } from "@/lib/data/movements-recent";
+import { listActiveCalendarDays } from "@/lib/data/prazos";
+import { brDay } from "@/lib/prazos/calendar";
+import { computeDeadline, groupSkipped, rangeLabel, validateDeadlineInput } from "@/lib/prazos/compute";
+import { DEADLINE_DISCLAIMER, type DeadlineInput } from "@/lib/prazos/types";
 import {
   COMMERCIAL_STATUS_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -911,6 +915,51 @@ const buscarContratos = defineTool({
   },
 });
 
+// ---------------------------------------------------------------------------
+// Prazos (fase 5) — só calcula, não grava nada
+// ---------------------------------------------------------------------------
+
+const calcularPrazo = defineTool({
+  name: "calcular_prazo",
+  label: "Calculando o prazo",
+  description:
+    "Calcula a data final de um prazo processual no TJSP, com a conta passo a passo e os dias pulados (fins de semana, feriados, recesso de 20/12 a 20/01 e dias do calendário forense cadastrado). Use para perguntas como 'quando vence 15 dias úteis da intimação disponibilizada em 16/11?' ou quando um documento trouxer a data de disponibilização ou de intimação. Não grava nada: o resultado é uma sugestão para o advogado conferir.",
+  schema: z.object({
+    inicio: z
+      .enum(["disponibilizacao", "intimacao"])
+      .describe("disponibilizacao = data em que saiu no DJEN (a publicação é o dia útil seguinte); intimacao = data da ciência."),
+    data: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Data de início, AAAA-MM-DD."),
+    dias: z.number().int().min(1).max(365).describe("Número de dias do prazo."),
+    unidade: z.enum(["uteis", "corridos"]).default("uteis").describe("uteis (CPC art. 219, padrão) ou corridos."),
+    dobro: z.boolean().optional().describe("Prazo em dobro (Fazenda Pública, MP, Defensoria, litisconsortes com advogados diferentes em autos físicos)."),
+    comarca: z.string().max(120).optional().describe("Comarca, para os feriados municipais cadastrados."),
+  }),
+  async run(input) {
+    const deadline: DeadlineInput = {
+      start: { kind: input.inicio, date: input.data },
+      days: input.dias,
+      unit: input.unidade,
+      ...(input.dobro ? { dobro: true } : {}),
+      ...(input.comarca ? { comarca: input.comarca } : {}),
+    };
+    const invalid = validateDeadlineInput(deadline);
+    if (invalid) return { erro: invalid };
+    const r = computeDeadline(deadline, await listActiveCalendarDays());
+    return {
+      data_final: brDay(r.finalDate),
+      data_final_iso: r.finalDate,
+      ...(r.publicationDate ? { publicacao: brDay(r.publicationDate) } : {}),
+      inicio_da_contagem: brDay(r.startDate),
+      dias_contados: r.countedDays,
+      passos: r.steps.map((s) => (s.date ? `${s.label} (${brDay(s.date)}): ${s.detail}` : `${s.label}: ${s.detail}`)),
+      dias_pulados: groupSkipped(r.skipped).map((g) => `${rangeLabel(g.from, g.to)}: ${g.reason} (fonte: ${g.source})`),
+      avisos: r.warnings,
+      aviso: `${DEADLINE_DISCLAIMER} A data deve ir para o rascunho marcada como incerta.`,
+      link: "/prazos",
+    };
+  },
+});
+
 export const ALL_TOOLS: AssistantTool[] = [
   buscarLeads,
   verLead,
@@ -920,6 +969,7 @@ export const ALL_TOOLS: AssistantTool[] = [
   andamentosDoProcesso,
   andamentosRecentes,
   listarPrazos,
+  calcularPrazo,
   listarTarefas,
   listarAgenda,
   listarFollowUps,

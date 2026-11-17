@@ -224,7 +224,8 @@ export type NotificationType =
   | "contrato_enviado"
   | "contrato_assinado"
   | "pagamento_atraso"
-  | "andamento_novo";
+  | "andamento_novo"
+  | "automacao_falhou";
 
 export interface AppNotification {
   id: string;

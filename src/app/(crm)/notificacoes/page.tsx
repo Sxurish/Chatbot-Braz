@@ -10,6 +10,7 @@ import {
   FileSignature,
   Wallet,
   Gavel,
+  ServerCrash,
 } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
@@ -34,6 +35,7 @@ const ICONS: Record<
   contrato_assinado: { icon: FileSignature, tone: "bg-emerald-100 text-emerald-600" },
   pagamento_atraso: { icon: Wallet, tone: "bg-red-100 text-red-600" },
   andamento_novo: { icon: Gavel, tone: "bg-violet-100 text-violet-600" },
+  automacao_falhou: { icon: ServerCrash, tone: "bg-red-100 text-red-600" },
 };
 
 export default async function NotificationsPage() {
@@ -69,7 +71,9 @@ export default async function NotificationsPage() {
                   ? `/processos/${n.entity_id}`
                   : n.entity_type === "task"
                     ? "/tarefas"
-                    : null;
+                    : n.entity_type === "automation"
+                      ? "/automacoes"
+                      : null;
 
             const content = (
               <div

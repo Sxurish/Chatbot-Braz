@@ -10,6 +10,7 @@ import { listCaseOptions } from "@/lib/data/fase6-options";
 import { tribunalFromCnj } from "@/lib/datajud/tribunals";
 import { brDate } from "../format";
 import { MovementsPanel } from "./movements-panel";
+import { ProcessDeadlinesCard } from "@/components/prazos/process-deadlines-card";
 
 export default async function ProcessDetailPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
@@ -88,6 +89,8 @@ export default async function ProcessDetailPage(props: { params: Promise<{ id: s
               )}
             </CardContent>
           </Card>
+
+          <ProcessDeadlinesCard processId={process.id} />
         </div>
       </div>
     </>

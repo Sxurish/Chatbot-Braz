@@ -68,6 +68,7 @@ export async function updateSession(request: NextRequest) {
 /** Prefixos das rotas do CRM que exigem autenticação. */
 const CRM_PREFIXES = [
   "/dashboard",
+  "/prazos",
   "/leads",
   "/clientes",
   "/conversas",
@@ -88,4 +89,5 @@ const CRM_PREFIXES = [
   "/configuracoes",
   "/templates",
   "/assistente",
+  "/automacoes",
 ];
