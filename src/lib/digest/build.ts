@@ -25,8 +25,8 @@ import {
 } from "./dates";
 
 /**
- * Resumo diário do CRM: prazos dos próximos 7 dias, leads novos e urgentes,
- * andamentos novos e tarefas atrasadas. O financeiro só entra quando
+ * Resumo diário do CRM: intimações para conferir (fase 5), prazos dos
+ * próximos 7 dias, leads novos e urgentes, andamentos novos e tarefas atrasadas. O financeiro só entra quando
  * `includeFinance` (Admin) e só no painel: nunca na linha do WhatsApp.
  *
  * `buildDailyDigest` consulta o banco com o cliente recebido (o do usuário no
@@ -99,6 +99,22 @@ export interface DigestPayment {
   href: string;
 }
 
+/** Intimação do DJEN esperando a conferência do advogado (fase 5). */
+export interface DigestPublication {
+  id: string;
+  /** Número do processo (ou "sem número"). */
+  label: string;
+  /** Tipo do ato lido pela IA, ou o tipo do DJEN. */
+  actType: string;
+  /** AAAA-MM-DD: disponibilização no DJEN. */
+  availableDate: string;
+  cancelled: boolean;
+  href: string;
+}
+
+/** Quantas intimações aparecem no resumo (as mais antigas). */
+export const DIGEST_PUBLICATIONS_TOP = 3;
+
 export interface DigestList<T> {
   total: number;
   items: T[];
@@ -129,6 +145,11 @@ export interface DailyDigest {
   };
   andamentos: { total: number; processos: DigestProcessMovements[] };
   tarefasAtrasadas: DigestList<DigestTask>;
+  /**
+   * Intimações para conferir: total e as 3 mais antigas. Só aparece quando há
+   * alguma (e não existe em resumos gravados antes da fase 5).
+   */
+  intimacoes?: DigestList<DigestPublication>;
   /** Só para Admin, e só no painel. */
   financeiro: {
     aReceber: DigestList<DigestPayment> & { amount: number };
@@ -146,6 +167,15 @@ type LeadRow = Pick<
 type MovementRow = Pick<ProcessMovement, "id" | "process_id" | "occurred_at" | "description" | "hidden" | "created_at">;
 type PaymentRow = Pick<Payment, "id" | "description" | "amount" | "due_date" | "status" | "client_id">;
 type ClientRow = Pick<Client, "id" | "full_name">;
+export interface PublicationRow {
+  id: string;
+  available_date: string;
+  process_number: string | null;
+  process_number_masked: string | null;
+  kind: string | null;
+  cancelled: boolean | null;
+  ai_reading: { actType?: string | null } | null;
+}
 
 export interface DigestSourceData {
   processes: ProcessRow[];
@@ -155,6 +185,10 @@ export interface DigestSourceData {
   movements: MovementRow[];
   payments?: PaymentRow[];
   clients?: ClientRow[];
+  /** Intimações para conferir. Ausente = banco sem a fase 5 (a seção não aparece). */
+  publications?: PublicationRow[];
+  /** Total de intimações para conferir, quando a consulta trouxe só parte. */
+  publicationsTotal?: number;
 }
 
 export interface DigestOptions {
@@ -328,6 +362,27 @@ export function computeDailyDigest(data: DigestSourceData, opts: DigestOptions):
     };
   }
 
+  // ------------------------------------------------------------ intimações
+  // Sem nenhuma para conferir (ou banco sem a fase 5), a seção nem aparece.
+  let intimacoes: DailyDigest["intimacoes"];
+  if (data.publications && data.publications.length > 0) {
+    const oldest = [...data.publications]
+      .sort((a, b) => a.available_date.localeCompare(b.available_date) || a.id.localeCompare(b.id))
+      .slice(0, DIGEST_PUBLICATIONS_TOP)
+      .map((p) => ({
+        id: p.id,
+        label: p.process_number_masked || p.process_number || "sem número",
+        actType: p.ai_reading?.actType?.trim() || p.kind?.trim() || "Intimação",
+        availableDate: p.available_date,
+        cancelled: Boolean(p.cancelled),
+        href: `/intimacoes/${p.id}`,
+      }));
+    intimacoes = {
+      total: Math.max(data.publicationsTotal ?? 0, data.publications.length),
+      items: oldest,
+    };
+  }
+
   return {
     version: 1,
     generatedAt: opts.now.toISOString(),
@@ -344,6 +399,7 @@ export function computeDailyDigest(data: DigestSourceData, opts: DigestOptions):
     leads: { novos: list(novos.map(toLead)), urgentes: list(urgentes.map(toLead)) },
     andamentos: { total: fresh.length, processos: [...groups.values()].slice(0, MAX_ITEMS) },
     tarefasAtrasadas: list(late),
+    ...(intimacoes ? { intimacoes } : {}),
     financeiro,
   };
 }
@@ -442,6 +498,8 @@ export async function buildDailyDigest(supabase: AnyClient, opts: DigestOptions)
       )
     : [];
 
+  const pubs = await publicationsToReview(supabase);
+
   let payments: PaymentRow[] = [];
   let clients: ClientRow[] = [];
   if (opts.includeFinance) {
@@ -475,9 +533,36 @@ export async function buildDailyDigest(supabase: AnyClient, opts: DigestOptions)
       movements,
       payments,
       clients,
+      ...(pubs ? { publications: pubs.rows, publicationsTotal: pubs.total } : {}),
     },
     opts
   );
+}
+
+/**
+ * Intimações para conferir (fase 5), das mais antigas. Banco sem a tabela:
+ * null, e o resumo sai sem a seção (nunca derruba o resumo).
+ */
+async function publicationsToReview(supabase: AnyClient): Promise<{ rows: PublicationRow[]; total: number } | null> {
+  try {
+    const { data, error, count } = (await supabase
+      .from("court_publications")
+      .select("id, available_date, process_number, process_number_masked, kind, cancelled, ai_reading", {
+        count: "exact",
+      })
+      .eq("status", "para_conferir")
+      .order("available_date", { ascending: true })
+      .limit(DIGEST_PUBLICATIONS_TOP * 10)) as {
+      data: PublicationRow[] | null;
+      error: { message: string } | null;
+      count?: number | null;
+    };
+    if (error) return null;
+    const rows = data ?? [];
+    return { rows, total: typeof count === "number" ? count : rows.length };
+  } catch {
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -499,6 +584,9 @@ function oneLine(text: string): string {
  */
 export function digestSummaryLine(d: DailyDigest): string {
   const parts: string[] = [];
+  if (d.intimacoes && d.intimacoes.total > 0) {
+    parts.push(plural(d.intimacoes.total, "intimação para conferir", "intimações para conferir"));
+  }
   if (d.prazos.upcoming > 0) {
     const extra = [
       d.prazos.today ? `${d.prazos.today} hoje` : null,
@@ -518,7 +606,7 @@ export function digestSummaryLine(d: DailyDigest): string {
   }
   const line = parts.length
     ? parts.join(" · ")
-    : "nada pendente: sem prazos nos próximos 7 dias, leads novos, andamentos novos ou tarefas atrasadas";
+    : "nada pendente: sem intimações para conferir, prazos nos próximos 7 dias, leads novos, andamentos novos ou tarefas atrasadas";
   return oneLine(line).slice(0, 899);
 }
 
@@ -554,6 +642,21 @@ function renderWhatsapp(d: DailyDigest, appUrl: string, maxPer: number): string 
     const rest = total - Math.min(items.length, maxPer);
     if (rest > 0) out.push(`_e mais ${rest}_`);
   };
+
+  if (d.intimacoes && d.intimacoes.total > 0) {
+    const shown = d.intimacoes.items.slice(0, Math.min(maxPer, DIGEST_PUBLICATIONS_TOP));
+    out.push("", "*Intimações para conferir*");
+    for (const p of shown) {
+      out.push(
+        `• ${clean(p.label, 40)}: ${clean(p.actType, 70)} (disponibilizada em ${shortDateBr(p.availableDate)})` +
+          (p.cancelled ? " _cancelada no DJEN_" : ""),
+        `  ${link(p.href)}`
+      );
+    }
+    const rest = d.intimacoes.total - shown.length;
+    if (rest > 0) out.push(`_e mais ${rest}_`);
+    out.push(`  Conferir todas: ${link("/intimacoes")}`);
+  }
 
   section(`Prazos (próximos ${DIGEST_WINDOW_DAYS} dias)`, d.prazos.items, d.prazos.upcoming + d.prazos.overdue, (p) => [
     `• ${capitalize(p.when)}${p.time ? ` às ${p.time}` : ""}: ${clean(p.title)}` +

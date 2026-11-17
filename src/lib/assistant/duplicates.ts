@@ -132,7 +132,7 @@ export function findMovementDuplicates(
     .slice(0, MAX)
     .map((m) => ({
       label: m.description.length > 80 ? `${m.description.slice(0, 77)}...` : m.description,
-      reason: `Andamento ${m.source === "datajud" ? "do tribunal" : "da equipe"} no mesmo dia`,
+      reason: `Andamento ${m.source === "manual" ? "da equipe" : m.source === "djen" ? "da intimação" : "do tribunal"} no mesmo dia`,
       link: `/processos/${encodeURIComponent(m.process_id)}`,
     }));
 }

@@ -6,6 +6,7 @@ import {
   Clock,
   Gavel,
   ListChecks,
+  Scale,
   MessageCircle,
   Sunrise,
   UserPlus,
@@ -281,6 +282,36 @@ export function DailyDigestCard({
           )}
         </div>
       </div>
+
+      {d.intimacoes && d.intimacoes.total > 0 && (
+        <div className="mx-3 mt-3 rounded-lg border border-amber-200 bg-amber-50/70 p-3 sm:mx-4 sm:mt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <Scale className="h-4 w-4 shrink-0 text-amber-700" />
+            <h4 className="text-sm font-medium text-amber-900">
+              {d.intimacoes.total} intimaç{d.intimacoes.total === 1 ? "ão" : "ões"} para conferir
+            </h4>
+            <Link href="/intimacoes" className="ml-auto text-xs font-medium text-amber-800 hover:text-brand-primary">
+              Conferir →
+            </Link>
+          </div>
+          <ul className="mt-1.5 space-y-0.5">
+            {d.intimacoes.items.map((p) => (
+              <li key={p.id} className="min-w-0">
+                <Link
+                  href={p.href}
+                  className="flex min-w-0 flex-wrap items-baseline gap-x-2 rounded-md px-1 py-0.5 text-sm hover:bg-amber-100/60"
+                >
+                  <span className="truncate text-slate-800">{p.actType}</span>
+                  <span className="truncate text-xs text-slate-500">
+                    {p.label} · disponibilizada em {shortDateBr(p.availableDate)}
+                    {p.cancelled ? " · cancelada no DJEN" : ""}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <div className="grid gap-3 p-3 sm:grid-cols-2 sm:p-4 xl:grid-cols-4">
         <Section

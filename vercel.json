@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/resumo",
       "schedule": "0 12 * * 1-5"
+    },
+    {
+      "path": "/api/cron/intimacoes",
+      "schedule": "0 10 * * *"
     }
   ]
 }

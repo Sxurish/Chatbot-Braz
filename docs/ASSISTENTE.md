@@ -140,6 +140,7 @@ existentes pelo assistente não está no escopo.
 | Partes comuns ao painel e ao WhatsApp (notas do histórico, erros da IA) | `src/lib/assistant/turn.ts`, `src/lib/assistant/links.ts` |
 | Assistente pelo WhatsApp (fase 4): roteamento do número da equipe | `src/lib/channels/whatsapp-dispatch.ts`, `src/app/api/webhooks/whatsapp/route.ts` |
 | Assistente pelo WhatsApp: resposta, "OK"/"CANCELAR", sem financeiro | `src/lib/assistant/whatsapp.ts`, `whatsapp-format.ts` |
+| "OK" que confirma intimação avisada pelo WhatsApp (rascunho pendente tem prioridade; ver [INTIMACOES.md](INTIMACOES.md)) | `src/lib/intimacoes/whatsapp-ok.ts` |
 | Identidade sem cookie no WhatsApp (service role + filtros no código) | `src/lib/supabase/request-context.ts` |
 | WhatsApp e resumo diário na tela Equipe | `src/app/(crm)/equipe/*`, `src/lib/auth/team-actions.ts`, `src/lib/whatsapp-number.ts` |
 

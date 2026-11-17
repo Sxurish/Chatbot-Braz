@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { mockAppointments, mockLeads, mockTasks } from "@/lib/mock-data";
 import { mockClients, mockMovements, mockPayments, mockProcesses } from "@/lib/mock-data-crm";
+import { mockPublications } from "@/lib/intimacoes/mock";
 import type { TeamUser } from "@/lib/types";
 import { buildDailyDigest, computeDailyDigest, type DailyDigest } from "./build";
 import { isoDateInSaoPaulo } from "./dates";
@@ -30,6 +31,7 @@ export async function getLiveDigest(user: TeamUser, now = new Date()): Promise<L
         movements: mockMovements,
         payments: mockPayments,
         clients: mockClients,
+        publications: mockPublications.filter((p) => p.status === "para_conferir"),
       },
       { now, includeFinance }
     );
