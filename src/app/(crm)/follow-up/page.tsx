@@ -3,12 +3,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { QuickCreate } from "@/components/crm/quick-create";
-import { getUserName } from "@/lib/mock-data";
+import { getTeamNames } from "@/lib/data/team-names";
+import { nameOf } from "@/lib/team-names";
 import { listFollowUps } from "@/lib/data/crm";
 import { formatDateTime } from "@/lib/utils";
 
 export default async function FollowUpPage() {
-  const followUps = await listFollowUps();
+  const [followUps, names] = await Promise.all([listFollowUps(), getTeamNames()]);
   return (
     <>
       <PageHeader
@@ -28,7 +29,7 @@ export default async function FollowUpPage() {
                   <p className="text-sm text-slate-600">{fu.description}</p>
                 )}
                 <p className="mt-1 text-xs text-slate-500">
-                  {getUserName(fu.assigned_to)} • {formatDateTime(fu.scheduled_at)}
+                  {nameOf(names, fu.assigned_to)} • {formatDateTime(fu.scheduled_at)}
                   {fu.lead_id && (
                     <>
                       {" • "}

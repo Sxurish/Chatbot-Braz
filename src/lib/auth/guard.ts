@@ -1,6 +1,7 @@
 import "server-only";
 import { redirect } from "next/navigation";
-import { createClient, createServiceClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/server";
+import { getSessionProfile } from "@/lib/auth/current-user";
 import { hasServiceRole, isSupabaseConfigured } from "@/lib/supabase/config";
 import { decideAccess, type InviteLike } from "@/lib/auth/invite-rules";
 
@@ -13,17 +14,8 @@ import { decideAccess, type InviteLike } from "@/lib/auth/invite-rules";
 export async function requireTeamAccess(): Promise<void> {
   if (!isSupabaseConfigured()) return;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { user, profile } = await getSessionProfile();
   if (!user) redirect("/login");
-
-  const { data: profile } = await supabase
-    .from("users")
-    .select("active")
-    .eq("id", user.id)
-    .maybeSingle();
   if (profile?.active) return;
 
   let invite: InviteLike | null = null;

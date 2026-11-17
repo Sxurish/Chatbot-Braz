@@ -1,11 +1,12 @@
 import { Plus } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { LeadsTable } from "@/components/crm/leads-table";
+import { getTeamNames } from "@/lib/data/team-names";
 import { Button } from "@/components/ui/button";
 import { listLeads } from "@/lib/data/leads";
 
 export default async function LeadsPage() {
-  const leads = await listLeads();
+  const [leads, names] = await Promise.all([listLeads(), getTeamNames()]);
   return (
     <>
       <PageHeader
@@ -17,7 +18,7 @@ export default async function LeadsPage() {
           </Button>
         }
       />
-      <LeadsTable leads={leads} />
+      <LeadsTable leads={leads} names={names} />
     </>
   );
 }

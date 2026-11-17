@@ -23,7 +23,10 @@ import {
 import { DocumentUpload } from "@/components/crm/document-upload";
 import { LeadActions, LeadHeaderActions } from "@/components/crm/lead-actions";
 import { GenerateDocumentButton } from "@/components/crm/generate-document-button";
-import { getUserName, mockTimeline } from "@/lib/mock-data";
+import { mockTimeline } from "@/lib/mock-data";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { getTeamNames } from "@/lib/data/team-names";
+import { nameOf } from "@/lib/team-names";
 import { getLead } from "@/lib/data/leads";
 import { listDocumentsByLead } from "@/lib/data/crm";
 import { listTemplates } from "@/lib/data/templates-read";
@@ -38,10 +41,12 @@ export default async function LeadDetailPage(
   const lead = await getLead(params.id);
   if (!lead) notFound();
 
-  const timeline = mockTimeline[lead.id] ?? [];
-  const [documents, templates] = await Promise.all([
+  // A linha do tempo de exemplo só existe no modo demonstração.
+  const timeline = isSupabaseConfigured() ? [] : (mockTimeline[lead.id] ?? []);
+  const [documents, templates, names] = await Promise.all([
     listDocumentsByLead(lead.id),
     listTemplates(true),
+    getTeamNames(),
   ]);
 
   return (
@@ -194,7 +199,7 @@ export default async function LeadDetailPage(
               <div className="flex justify-between">
                 <span className="text-slate-500">Responsável</span>
                 <span className="font-medium text-slate-900">
-                  {getUserName(lead.assigned_to)}
+                  {nameOf(names, lead.assigned_to)}
                 </span>
               </div>
               <div className="flex justify-between">

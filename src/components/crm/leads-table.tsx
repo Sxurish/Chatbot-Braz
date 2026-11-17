@@ -15,11 +15,11 @@ import {
 import {
   LEGAL_AREA_LABELS,
 } from "@/lib/constants";
-import { getUserName } from "@/lib/mock-data";
+import { nameOf, type TeamNames } from "@/lib/team-names";
 import type { Lead, LegalArea, Urgency } from "@/lib/types";
 import { formatDate } from "@/lib/utils";
 
-export function LeadsTable({ leads }: { leads: Lead[] }) {
+export function LeadsTable({ leads, names }: { leads: Lead[]; names: TeamNames }) {
   const [query, setQuery] = useState("");
   const [area, setArea] = useState<LegalArea | "all">("all");
   const [urgency, setUrgency] = useState<Urgency | "all">("all");
@@ -119,7 +119,7 @@ export function LeadsTable({ leads }: { leads: Lead[] }) {
                       <CommercialStatusBadge status={lead.commercial_status} />
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {getUserName(lead.assigned_to)}
+                      {nameOf(names, lead.assigned_to)}
                     </td>
                     <td className="px-4 py-3 text-slate-500">
                       {formatDate(lead.created_at)}

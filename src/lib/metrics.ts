@@ -1,13 +1,17 @@
 import { LEGAL_AREA_LABELS } from "./constants";
-import { mockAppointments, mockFollowUps, mockTasks } from "./mock-data";
-import type { Lead, LegalArea } from "./types";
+import type { Appointment, FollowUp, Lead, LegalArea, Task } from "./types";
+
+export interface DashboardSources {
+  tasks: Task[];
+  appointments: Appointment[];
+  followUps: FollowUp[];
+}
 
 /**
- * Métricas agregadas para o dashboard geral.
- * Recebem a lista de leads (real do Supabase ou mockada) para computar os
- * indicadores. Tarefas/agendamentos seguem mockados até a Fase 5.
+ * Métricas agregadas para o dashboard geral, calculadas sobre os dados que a
+ * página leu (do Supabase, ou os fictícios só no modo demonstração).
  */
-export function getDashboardMetrics(leads: Lead[]) {
+export function getDashboardMetrics(leads: Lead[], sources: DashboardSources) {
   const today = new Date().toISOString().slice(0, 10);
 
   const totalLeads = leads.length;
@@ -16,17 +20,17 @@ export function getDashboardMetrics(leads: Lead[]) {
   const aguardandoDocs = leads.filter(
     (l) => l.commercial_status === "aguardando_documentos"
   ).length;
-  const consultasAgendadas = mockAppointments.filter(
+  const consultasAgendadas = sources.appointments.filter(
     (a) => a.status === "agendada"
   ).length;
   const clientes = leads.filter(
     (l) => l.commercial_status === "cliente_ativo" || l.is_existing_client
   ).length;
   const taxaConversao = totalLeads ? Math.round((clientes / totalLeads) * 100) : 0;
-  const tarefasPendentes = mockTasks.filter(
+  const tarefasPendentes = sources.tasks.filter(
     (t) => t.status === "pendente" || t.status === "em_andamento"
   ).length;
-  const followUpsPendentes = mockFollowUps.filter((f) => f.status === "pendente").length;
+  const followUpsPendentes = sources.followUps.filter((f) => f.status === "pendente").length;
 
   return {
     totalLeads,
@@ -70,12 +74,29 @@ export function getLeadsByUrgency(leads: Lead[]) {
   ];
 }
 
-/** Evolução semanal (mock estático para demonstração de tendência). */
-export function getWeeklyEvolution() {
-  return [
-    { semana: "Sem 1", leads: 4, clientes: 1 },
-    { semana: "Sem 2", leads: 6, clientes: 2 },
-    { semana: "Sem 3", leads: 5, clientes: 2 },
-    { semana: "Sem 4", leads: 8, clientes: 3 },
-  ];
+/**
+ * Evolução das últimas 4 semanas (blocos de 7 dias terminando hoje): leads
+ * novos e quantos deles já viraram clientes.
+ */
+export function getWeeklyEvolution(leads: Lead[], now = new Date()) {
+  const DAY = 86_400_000;
+  const end = now.getTime();
+  const weeks = [3, 2, 1, 0].map((ago) => {
+    const to = end - ago * 7 * DAY;
+    const from = to - 7 * DAY;
+    const label = new Date(from + DAY).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: "America/Sao_Paulo",
+    });
+    return { from, to, semana: `Sem. de ${label}`, leads: 0, clientes: 0 };
+  });
+  for (const lead of leads) {
+    const t = Date.parse(lead.created_at);
+    const week = weeks.find((w) => t > w.from && t <= w.to);
+    if (!week) continue;
+    week.leads += 1;
+    if (lead.commercial_status === "cliente_ativo" || lead.is_existing_client) week.clientes += 1;
+  }
+  return weeks.map(({ semana, leads: l, clientes }) => ({ semana, leads: l, clientes }));
 }

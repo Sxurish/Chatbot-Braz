@@ -25,6 +25,7 @@ import {
   getWeeklyEvolution,
 } from "@/lib/metrics";
 import { listLeads } from "@/lib/data/leads";
+import { listAppointments, listFollowUps, listTasks } from "@/lib/data/crm";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getLiveDigest } from "@/lib/digest/live";
 import { DailyDigestCard } from "@/components/dashboard/daily-digest-card";
@@ -34,8 +35,14 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   const now = new Date();
-  const [leads, user] = await Promise.all([listLeads(), getCurrentUser()]);
-  const m = getDashboardMetrics(leads);
+  const [leads, user, tasks, appointments, followUps] = await Promise.all([
+    listLeads(),
+    getCurrentUser(),
+    listTasks(),
+    listAppointments(),
+    listFollowUps(),
+  ]);
+  const m = getDashboardMetrics(leads, { tasks, appointments, followUps });
   const live = await getLiveDigest(user, now);
 
   return (
@@ -106,7 +113,7 @@ export default async function DashboardPage() {
             <CardTitle>Evolução semanal</CardTitle>
           </CardHeader>
           <CardContent>
-            <EvolutionChart data={getWeeklyEvolution()} />
+            <EvolutionChart data={getWeeklyEvolution(leads, now)} />
           </CardContent>
         </Card>
       </div>
