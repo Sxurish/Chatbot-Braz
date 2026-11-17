@@ -29,3 +29,19 @@ export async function requireAdminAction(): Promise<
   }
   return { ok: true, user: result.user };
 }
+
+/**
+ * Para Server Actions que gravam dados do dia a dia (tarefa, follow-up,
+ * agendamento, processo, documento...). Qualquer papel ativo pode gravar,
+ * menos o "visualizador", que só consulta.
+ */
+export async function requireWriterAction(): Promise<
+  { ok: true; user: TeamUser } | { ok: false; error: string }
+> {
+  const user = await getCurrentUser();
+  if (!user.active) return { ok: false, error: "Perfil inativo." };
+  if (user.role === "visualizador") {
+    return { ok: false, error: "Seu perfil só pode consultar." };
+  }
+  return { ok: true, user };
+}

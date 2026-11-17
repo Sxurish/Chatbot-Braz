@@ -5,7 +5,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { requireAdminAction } from "@/lib/auth/require-admin";
+import { requireAdminAction, requireWriterAction } from "@/lib/auth/require-admin";
+import { brInputToIso } from "@/lib/datetime-br";
 
 export interface ActionState {
   ok?: boolean;
@@ -35,10 +36,29 @@ async function audit(
   }
 }
 
+/**
+ * Campo de data do formulário ("2026-11-20") em ISO, no horário de Brasília.
+ * Antes virava 20/11 00:00 UTC, que aparece como 19/11 na tela, e cada
+ * edição puxava a data mais um dia para trás.
+ */
 function isoOrNull(value: string | undefined): string | null {
-  if (!value) return null;
-  const d = new Date(value);
-  return isNaN(d.getTime()) ? null : d.toISOString();
+  return brInputToIso(value);
+}
+
+/** Registra o motivo técnico no log do servidor e devolve a mensagem da tela. */
+function fail(message: string, error: { message?: string } | null): ActionState {
+  if (error) console.error(`[cadastro] ${message}`, error.message);
+  return { error: message };
+}
+
+// Com o Supabase, ids são UUID; no modo demonstração os registros de exemplo
+// usam ids curtos (case-001, client-001).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEMO_ID_RE = /^[a-z]+-\d{3}$/;
+function idField(message: string) {
+  return z
+    .string()
+    .refine((v) => UUID_RE.test(v) || (!isSupabaseConfigured() && DEMO_ID_RE.test(v)), message);
 }
 
 // ===========================================================================
@@ -60,7 +80,7 @@ const LEGAL_STATUS = [
 ] as const;
 
 const processSchema = z.object({
-  case_id: z.string().uuid("Selecione um caso válido."),
+  case_id: idField("Selecione um caso válido."),
   process_number: z.string().optional(),
   court: z.string().optional(),
   jurisdiction: z.string().optional(),
@@ -91,6 +111,8 @@ export async function createProcessAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const supabase = await createClient();
@@ -110,7 +132,7 @@ export async function createProcessAction(
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar o processo." };
+  if (error || !data) return fail("Falha ao criar o processo.", error);
   await audit(supabase, "create_process", "process", data.id, user.id);
   revalidatePath("/processos");
   return { ok: true };
@@ -126,6 +148,8 @@ export async function updateProcessAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const supabase = await createClient();
@@ -144,7 +168,7 @@ export async function updateProcessAction(
     })
     .eq("id", id);
 
-  if (error) return { error: "Falha ao atualizar o processo." };
+  if (error) return fail("Falha ao atualizar o processo.", error);
   await audit(supabase, "update_process", "process", id, user.id);
   revalidatePath("/processos");
   return { ok: true };
@@ -162,7 +186,7 @@ export async function deleteProcessAction(
 
   const supabase = await createClient();
   const { error } = await supabase.from("processes").delete().eq("id", id);
-  if (error) return { error: "Falha ao excluir o processo." };
+  if (error) return fail("Falha ao excluir o processo.", error);
   await audit(supabase, "delete_process", "process", id, admin.user.id);
   revalidatePath("/processos");
   return { ok: true };
@@ -174,10 +198,8 @@ export async function deleteProcessAction(
 const CONTRACT_STATUS = ["rascunho", "enviado", "assinado", "cancelado"] as const;
 
 const contractSchema = z.object({
-  client_id: z.string().uuid("Selecione um cliente válido."),
-  case_id: z
-    .string()
-    .uuid("Caso inválido.")
+  client_id: idField("Selecione um cliente válido."),
+  case_id: idField("Caso inválido.")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   contract_type: z.string().optional(),
@@ -235,7 +257,7 @@ export async function createContractAction(
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar o contrato." };
+  if (error || !data) return fail("Falha ao criar o contrato.", error);
   await audit(supabase, "create_contract", "contract", data.id, user.id);
   revalidatePath("/contratos");
   revalidatePath("/financeiro");
@@ -272,7 +294,7 @@ export async function updateContractAction(
     })
     .eq("id", id);
 
-  if (error) return { error: "Falha ao atualizar o contrato." };
+  if (error) return fail("Falha ao atualizar o contrato.", error);
   await audit(supabase, "update_contract", "contract", id, user.id);
   revalidatePath("/contratos");
   revalidatePath("/financeiro");
@@ -291,7 +313,7 @@ export async function deleteContractAction(
 
   const supabase = await createClient();
   const { error } = await supabase.from("contracts").delete().eq("id", id);
-  if (error) return { error: "Falha ao excluir o contrato." };
+  if (error) return fail("Falha ao excluir o contrato.", error);
   await audit(supabase, "delete_contract", "contract", id, admin.user.id);
   revalidatePath("/contratos");
   revalidatePath("/financeiro");
@@ -304,14 +326,10 @@ export async function deleteContractAction(
 const PAYMENT_STATUS = ["pendente", "pago", "atrasado", "cancelado"] as const;
 
 const paymentSchema = z.object({
-  contract_id: z
-    .string()
-    .uuid("Contrato inválido.")
+  contract_id: idField("Contrato inválido.")
     .optional()
     .or(z.literal("").transform(() => undefined)),
-  client_id: z
-    .string()
-    .uuid("Cliente inválido.")
+  client_id: idField("Cliente inválido.")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   description: z.string().optional(),
@@ -366,7 +384,7 @@ export async function createPaymentAction(
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar o pagamento." };
+  if (error || !data) return fail("Falha ao criar o pagamento.", error);
   await audit(supabase, "create_payment", "payment", data.id, user.id);
   revalidatePath("/financeiro");
   return { ok: true };
@@ -402,7 +420,7 @@ export async function updatePaymentAction(
     })
     .eq("id", id);
 
-  if (error) return { error: "Falha ao atualizar o pagamento." };
+  if (error) return fail("Falha ao atualizar o pagamento.", error);
   await audit(supabase, "update_payment", "payment", id, user.id);
   revalidatePath("/financeiro");
   return { ok: true };
@@ -420,7 +438,7 @@ export async function deletePaymentAction(
 
   const supabase = await createClient();
   const { error } = await supabase.from("payments").delete().eq("id", id);
-  if (error) return { error: "Falha ao excluir o pagamento." };
+  if (error) return fail("Falha ao excluir o pagamento.", error);
   await audit(supabase, "delete_payment", "payment", id, admin.user.id);
   revalidatePath("/financeiro");
   return { ok: true };

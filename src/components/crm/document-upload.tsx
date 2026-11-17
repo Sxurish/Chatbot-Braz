@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useActionState } from "react";
+import { useCallback, useEffect, useRef, useState, useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { Upload, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,17 +39,8 @@ function SubmitButton() {
 }
 
 export function DocumentUpload({ leadId }: { leadId: string }) {
-  const [state, formAction] = useActionState(uploadDocumentAction, initialState);
   const [open, setOpen] = useState(false);
-  const formRef = useRef<HTMLFormElement>(null);
-
-  useEffect(() => {
-    if (state.ok) {
-      formRef.current?.reset();
-      const t = setTimeout(() => setOpen(false), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [state.ok]);
+  const close = useCallback(() => setOpen(false), []);
 
   if (!open) {
     return (
@@ -58,6 +49,22 @@ export function DocumentUpload({ leadId }: { leadId: string }) {
       </Button>
     );
   }
+  // Cada abertura começa limpa (antes a segunda abertura mostrava o
+  // "enviado com sucesso" antigo e não fechava depois do novo envio).
+  return <DocumentUploadForm leadId={leadId} onClose={close} />;
+}
+
+function DocumentUploadForm({ leadId, onClose }: { leadId: string; onClose: () => void }) {
+  const [state, formAction] = useActionState(uploadDocumentAction, initialState);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state.ok) {
+      formRef.current?.reset();
+      const t = setTimeout(onClose, 1500);
+      return () => clearTimeout(t);
+    }
+  }, [state, onClose]);
 
   return (
     <form
@@ -101,7 +108,7 @@ export function DocumentUpload({ leadId }: { leadId: string }) {
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => setOpen(false)}
+          onClick={onClose}
         >
           Cancelar
         </Button>

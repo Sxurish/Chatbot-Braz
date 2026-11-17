@@ -54,7 +54,21 @@ function Feedback({ state }: { state: ActionState }) {
   return null;
 }
 
-export function EditTemplateDialog({
+/**
+ * O formulário (e o resultado do envio) só existe com a janela aberta: cada
+ * abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+ * fechava sozinha.
+ */
+export function EditTemplateDialog(props: {
+  open: boolean;
+  template: DocumentTemplate | null;
+  onClose: () => void;
+}) {
+  if (!props.open || !props.template) return null;
+  return <EditTemplateDialogContent key={props.template.id} {...props} />;
+}
+
+function EditTemplateDialogContent({
   open,
   template,
   onClose,

@@ -105,7 +105,15 @@ export async function createDsrAction(
 // Atualizar status / notas
 // ---------------------------------------------------------------------------
 const updateSchema = z.object({
-  id: z.string().uuid(),
+  // No modo demonstração os registros de exemplo usam ids curtos.
+  id: z
+    .string()
+    .refine(
+      (v) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+        !isSupabaseConfigured(),
+      "Solicitação inválida."
+    ),
   status: z.enum(["recebida", "em_analise", "concluida", "negada"]),
   resolution_notes: z
     .string()

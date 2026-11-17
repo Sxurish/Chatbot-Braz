@@ -49,7 +49,21 @@ function Feedback({ state }: { state: ActionState }) {
   return null;
 }
 
-export function ReviewDialog({
+/**
+ * O formulário (e o resultado do envio) só existe com a janela aberta: cada
+ * abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+ * fechava sozinha.
+ */
+export function ReviewDialog(props: {
+  open: boolean;
+  doc: DocumentRow | null;
+  onClose: () => void;
+}) {
+  if (!props.open || !props.doc) return null;
+  return <ReviewDialogContent key={props.doc.id} {...props} />;
+}
+
+function ReviewDialogContent({
   open,
   doc,
   onClose,

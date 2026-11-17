@@ -68,7 +68,21 @@ function InfoRow({
   );
 }
 
-export function DsrUpdateDialog({
+/**
+ * O formulário (e o resultado do envio) só existe com a janela aberta: cada
+ * abertura começa limpa. Antes, depois de um envio certo, a janela seguinte
+ * fechava sozinha.
+ */
+export function DsrUpdateDialog(props: {
+  open: boolean;
+  dsr: DsrRow | null;
+  onClose: () => void;
+}) {
+  if (!props.open || !props.dsr) return null;
+  return <DsrUpdateDialogContent key={props.dsr.id} {...props} />;
+}
+
+function DsrUpdateDialogContent({
   open,
   dsr,
   onClose,

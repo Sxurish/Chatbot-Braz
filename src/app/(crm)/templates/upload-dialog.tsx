@@ -64,6 +64,25 @@ export function UploadTemplateDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Novo template"
+      description="Faça upload de um arquivo .docx com placeholders no formato {{cliente.nome}}."
+      className="max-w-lg"
+    >
+      {/* O formulário (e o resultado do envio) nasce de novo a cada abertura. */}
+      {open && <UploadTemplateForm onClose={onClose} />}
+    </Dialog>
+  );
+}
+
+function UploadTemplateForm({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
   const [state, action] = useActionState(uploadTemplateAction, initial);
   const [fileName, setFileName] = useState<string>("");
 
@@ -78,71 +97,63 @@ export function UploadTemplateDialog({
   }, [state.ok, onClose]);
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title="Novo template"
-      description="Faça upload de um arquivo .docx com placeholders no formato {{cliente.nome}}."
-      className="max-w-lg"
-    >
-      <form action={action} className="space-y-3">
-        <div className="space-y-1.5">
-          <FieldLabel>Nome *</FieldLabel>
-          <Input
-            name="name"
-            required
-            maxLength={200}
-            placeholder="Procuração ad judicia"
-          />
-        </div>
+    <form action={action} className="space-y-3">
+      <div className="space-y-1.5">
+        <FieldLabel>Nome *</FieldLabel>
+        <Input
+          name="name"
+          required
+          maxLength={200}
+          placeholder="Procuração ad judicia"
+        />
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Descrição</FieldLabel>
-          <Textarea
-            name="description"
-            rows={2}
-            placeholder="Quando usar este template..."
-          />
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Descrição</FieldLabel>
+        <Textarea
+          name="description"
+          rows={2}
+          placeholder="Quando usar este template..."
+        />
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Categoria *</FieldLabel>
-          <Select name="category" defaultValue="outros" required>
-            {Object.entries(TEMPLATE_CATEGORY_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>
-                {v}
-              </option>
-            ))}
-          </Select>
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Categoria *</FieldLabel>
+        <Select name="category" defaultValue="outros" required>
+          {Object.entries(TEMPLATE_CATEGORY_LABELS).map(([k, v]) => (
+            <option key={k} value={k}>
+              {v}
+            </option>
+          ))}
+        </Select>
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Arquivo .docx *</FieldLabel>
-          <input
-            type="file"
-            name="file"
-            required
-            accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
-            className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-primary file:px-3 file:py-1.5 file:text-sm file:text-white"
-          />
-          {fileName && (
-            <p className="text-xs text-slate-500">{fileName}</p>
-          )}
-          <p className="text-xs text-slate-500">
-            Máx. 5 MB. Os placeholders {`{{cliente.nome}}`}, {`{{lead.nome}}`}, etc. serão detectados automaticamente.
-          </p>
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Arquivo .docx *</FieldLabel>
+        <input
+          type="file"
+          name="file"
+          required
+          accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          onChange={(e) => setFileName(e.target.files?.[0]?.name ?? "")}
+          className="w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-primary file:px-3 file:py-1.5 file:text-sm file:text-white"
+        />
+        {fileName && (
+          <p className="text-xs text-slate-500">{fileName}</p>
+        )}
+        <p className="text-xs text-slate-500">
+          Máx. 5 MB. Os placeholders {`{{cliente.nome}}`}, {`{{lead.nome}}`}, etc. serão detectados automaticamente.
+        </p>
+      </div>
 
-        <Feedback state={state} />
+      <Feedback state={state} />
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Submit />
-        </div>
-      </form>
-    </Dialog>
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Submit />
+      </div>
+    </form>
   );
 }

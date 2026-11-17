@@ -5,6 +5,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { requireWriterAction } from "@/lib/auth/require-admin";
+import { brInputToIso } from "@/lib/datetime-br";
 
 export interface ActionState {
   ok?: boolean;
@@ -35,15 +37,28 @@ async function audit(
   }
 }
 
+/** Registra o motivo técnico no log do servidor e devolve a mensagem da tela. */
+function fail(message: string, error: { message?: string } | null): ActionState {
+  if (error) console.error(`[cadastro] ${message}`, error.message);
+  return { error: message };
+}
+
+// Com o Supabase, ids são UUID; no modo demonstração os leads usam ids curtos.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const leadIdField = z
+  .string()
+  .refine((v) => UUID_RE.test(v) || !isSupabaseConfigured(), "Lead inválido.")
+  .optional();
+
 // ---------------------------------------------------------------------------
 // Tarefa
 // ---------------------------------------------------------------------------
 const taskSchema = z.object({
-  title: z.string().min(2, "Informe um título."),
+  title: z.string().trim().min(2, "Informe um título."),
   description: z.string().optional(),
   due_date: z.string().optional(),
   priority: z.enum(["alta", "media", "baixa"]).default("media"),
-  lead_id: z.string().optional(),
+  lead_id: leadIdField,
 });
 
 export async function createTaskAction(
@@ -60,6 +75,10 @@ export async function createTaskAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
+  const dueDate = brInputToIso(parsed.data.due_date);
+  if (parsed.data.due_date && !dueDate) return { error: "Prazo inválido." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const supabase = await createClient();
@@ -68,9 +87,7 @@ export async function createTaskAction(
     .insert({
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      due_date: parsed.data.due_date
-        ? new Date(parsed.data.due_date).toISOString()
-        : null,
+      due_date: dueDate,
       priority: parsed.data.priority,
       status: "pendente",
       lead_id: parsed.data.lead_id ?? null,
@@ -78,7 +95,7 @@ export async function createTaskAction(
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar a tarefa." };
+  if (error || !data) return fail("Falha ao criar a tarefa.", error);
   await audit(supabase, "create", "task", data.id);
   revalidatePath("/tarefas");
   if (parsed.data.lead_id) revalidatePath(`/leads/${parsed.data.lead_id}`);
@@ -89,10 +106,10 @@ export async function createTaskAction(
 // Follow-up
 // ---------------------------------------------------------------------------
 const followUpSchema = z.object({
-  title: z.string().min(2, "Informe um título."),
+  title: z.string().trim().min(2, "Informe um título."),
   description: z.string().optional(),
   scheduled_at: z.string().min(1, "Informe a data."),
-  lead_id: z.string().optional(),
+  lead_id: leadIdField,
 });
 
 export async function createFollowUpAction(
@@ -108,6 +125,10 @@ export async function createFollowUpAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
+  const scheduledAt = brInputToIso(parsed.data.scheduled_at);
+  if (!scheduledAt) return { error: "Data inválida." };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const supabase = await createClient();
@@ -116,14 +137,14 @@ export async function createFollowUpAction(
     .insert({
       title: parsed.data.title,
       description: parsed.data.description ?? null,
-      scheduled_at: new Date(parsed.data.scheduled_at).toISOString(),
+      scheduled_at: scheduledAt,
       status: "pendente",
       lead_id: parsed.data.lead_id ?? null,
     })
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar o follow-up." };
+  if (error || !data) return fail("Falha ao criar o follow-up.", error);
   await audit(supabase, "create", "follow_up", data.id);
   revalidatePath("/follow-up");
   if (parsed.data.lead_id) revalidatePath(`/leads/${parsed.data.lead_id}`);
@@ -134,13 +155,16 @@ export async function createFollowUpAction(
 // Agendamento
 // ---------------------------------------------------------------------------
 const appointmentSchema = z.object({
-  title: z.string().min(2, "Informe um título."),
-  date: z.string().min(1, "Informe a data."),
-  start_time: z.string().min(1, "Informe o horário."),
-  end_time: z.string().optional(),
+  title: z.string().trim().min(2, "Informe um título."),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data."),
+  start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Informe o horário."),
+  end_time: z
+    .string()
+    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Horário de fim inválido.")
+    .optional(),
   modality: z.enum(["online", "presencial", "telefone"]).default("online"),
   meeting_link: z.string().optional(),
-  lead_id: z.string().optional(),
+  lead_id: leadIdField,
 });
 
 export async function createAppointmentAction(
@@ -158,6 +182,11 @@ export async function createAppointmentAction(
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
+  }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
+  if (parsed.data.end_time && parsed.data.end_time <= parsed.data.start_time) {
+    return { error: "O fim precisa ser depois do início." };
   }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
@@ -177,7 +206,7 @@ export async function createAppointmentAction(
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar o agendamento." };
+  if (error || !data) return fail("Falha ao criar o agendamento.", error);
   await audit(supabase, "create", "appointment", data.id);
   revalidatePath("/agenda");
   if (parsed.data.lead_id) revalidatePath(`/leads/${parsed.data.lead_id}`);
@@ -191,9 +220,12 @@ export async function convertLeadToClientAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const leadId = formData.get("lead_id") as string;
+  const leadId = String(formData.get("lead_id") ?? "");
   if (!leadId) return { error: "Lead inválido." };
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
+  if (!UUID_RE.test(leadId)) return { error: "Lead inválido." };
 
   const supabase = await createClient();
   const { data: lead } = await supabase
@@ -221,16 +253,20 @@ export async function convertLeadToClientAction(
       state: lead.state,
       status: "ativo",
     });
-    if (insertError) return { error: "Falha ao converter em cliente." };
+    if (insertError) return fail("Falha ao converter em cliente.", insertError);
   }
 
-  await supabase
+  const { error: leadError } = await supabase
     .from("leads")
     .update({ is_existing_client: true, commercial_status: "cliente_ativo" })
     .eq("id", leadId);
+  if (leadError) {
+    return fail("O cliente foi criado, mas o lead não foi atualizado.", leadError);
+  }
 
   await audit(supabase, "convert_to_client", "lead", leadId);
   revalidatePath(`/leads/${leadId}`);
+  revalidatePath("/leads");
   revalidatePath("/clientes");
   return { ok: true };
 }
@@ -242,11 +278,14 @@ export async function createCaseFromLeadAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const leadId = formData.get("lead_id") as string;
-  const title = (formData.get("title") as string)?.trim();
+  const leadId = String(formData.get("lead_id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
   if (!leadId) return { error: "Lead inválido." };
-  if (!title || title.length < 2) return { error: "Informe um título para o caso." };
+  if (title.length < 2) return { error: "Informe um título para o caso." };
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
+  if (!UUID_RE.test(leadId)) return { error: "Lead inválido." };
 
   const supabase = await createClient();
   const { data: lead } = await supabase
@@ -256,10 +295,19 @@ export async function createCaseFromLeadAction(
     .maybeSingle();
   if (!lead) return { error: "Lead não encontrado." };
 
+  // Se o lead já virou cliente, o caso já nasce ligado ao cliente.
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("lead_id", leadId)
+    .limit(1)
+    .maybeSingle();
+
   const { data, error } = await supabase
     .from("cases")
     .insert({
       lead_id: leadId,
+      client_id: client?.id ?? null,
       title,
       legal_area: lead.legal_area,
       subarea: lead.subarea,
@@ -270,7 +318,7 @@ export async function createCaseFromLeadAction(
     .select("id")
     .single();
 
-  if (error) return { error: "Falha ao criar o caso." };
+  if (error || !data) return fail("Falha ao criar o caso.", error);
   await audit(supabase, "create", "case", data.id);
   revalidatePath(`/leads/${leadId}`);
   revalidatePath("/casos");

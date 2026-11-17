@@ -238,7 +238,8 @@ NEXT_PUBLIC_PRIVACY_POLICY_VERSION=1.0.0
 4. Em **Authentication → Users**, crie o usuário da equipe (e-mail/senha).
 5. Promova-o a admin:
    `update public.users set role = 'admin' where email = '...';`
-6. (Opcional) Crie um bucket **privado** no Storage para documentos.
+6. Os buckets privados `documents` e `document_templates` são criados pelos
+   SQL (`storage.sql` e `correcao-cadastros.sql`); não precisa criar à mão.
 
 Com isso, `/login` passa a autenticar de verdade, as rotas do CRM ficam
 protegidas e o chatbot grava leads/consentimentos reais.

@@ -52,6 +52,25 @@ export function DsrCreateDialog({
   open: boolean;
   onClose: () => void;
 }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Nova solicitação LGPD"
+      description="Registre uma solicitação recebida por e-mail, telefone ou outro canal externo."
+      className="max-w-lg"
+    >
+      {/* O formulário (e o resultado do envio) nasce de novo a cada abertura. */}
+      {open && <DsrCreateForm onClose={onClose} />}
+    </Dialog>
+  );
+}
+
+function DsrCreateForm({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
   const [state, action] = useActionState(createDsrAction, initial);
 
   useEffect(() => {
@@ -62,69 +81,61 @@ export function DsrCreateDialog({
   }, [state.ok, onClose]);
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title="Nova solicitação LGPD"
-      description="Registre uma solicitação recebida por e-mail, telefone ou outro canal externo."
-      className="max-w-lg"
-    >
-      <form action={action} className="space-y-3">
+    <form action={action} className="space-y-3">
+      <div className="space-y-1.5">
+        <FieldLabel>Nome do titular *</FieldLabel>
+        <Input name="requester_name" required maxLength={200} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <FieldLabel>Nome do titular *</FieldLabel>
-          <Input name="requester_name" required maxLength={200} />
+          <FieldLabel>E-mail</FieldLabel>
+          <Input type="email" name="requester_email" />
         </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>E-mail</FieldLabel>
-            <Input type="email" name="requester_email" />
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Telefone</FieldLabel>
-            <Input name="requester_phone" />
-          </div>
-        </div>
-
         <div className="space-y-1.5">
-          <FieldLabel>Tipo de solicitação *</FieldLabel>
-          <Select name="request_type" defaultValue="exclusao" required>
-            {(Object.keys(REQUEST_TYPE_LABELS) as DsrRequestType[]).map((k) => (
-              <option key={k} value={k}>
-                {REQUEST_TYPE_LABELS[k]}
-              </option>
-            ))}
-          </Select>
+          <FieldLabel>Telefone</FieldLabel>
+          <Input name="requester_phone" />
         </div>
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Descrição</FieldLabel>
-          <Textarea
-            name="description"
-            rows={3}
-            maxLength={2000}
-            placeholder="Detalhes da solicitação, dados afetados, prazo, etc."
-          />
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Tipo de solicitação *</FieldLabel>
+        <Select name="request_type" defaultValue="exclusao" required>
+          {(Object.keys(REQUEST_TYPE_LABELS) as DsrRequestType[]).map((k) => (
+            <option key={k} value={k}>
+              {REQUEST_TYPE_LABELS[k]}
+            </option>
+          ))}
+        </Select>
+      </div>
 
-        <div className="space-y-1.5">
-          <FieldLabel>Lead vinculado (UUID, opcional)</FieldLabel>
-          <Input
-            name="lead_id"
-            placeholder="Cole o ID do lead, se houver"
-            className="font-mono text-xs"
-          />
-        </div>
+      <div className="space-y-1.5">
+        <FieldLabel>Descrição</FieldLabel>
+        <Textarea
+          name="description"
+          rows={3}
+          maxLength={2000}
+          placeholder="Detalhes da solicitação, dados afetados, prazo, etc."
+        />
+      </div>
 
-        <Feedback state={state} />
+      <div className="space-y-1.5">
+        <FieldLabel>Lead vinculado (UUID, opcional)</FieldLabel>
+        <Input
+          name="lead_id"
+          placeholder="Cole o ID do lead, se houver"
+          className="font-mono text-xs"
+        />
+      </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Submit />
-        </div>
-      </form>
-    </Dialog>
+      <Feedback state={state} />
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Submit />
+      </div>
+    </form>
   );
 }

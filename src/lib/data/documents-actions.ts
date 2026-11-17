@@ -5,7 +5,7 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { requireAdminAction } from "@/lib/auth/require-admin";
+import { requireAdminAction, requireWriterAction } from "@/lib/auth/require-admin";
 import { DOCUMENTS_BUCKET } from "@/lib/data/documents-read";
 
 export interface ActionState {
@@ -72,9 +72,19 @@ export async function downloadDocumentAction(
 // ---------------------------------------------------------------------------
 // Atualizar status de revisão
 // ---------------------------------------------------------------------------
+// No modo demonstração os documentos de exemplo usam ids curtos (doc-001).
 const reviewSchema = z.object({
-  id: z.string().uuid(),
-  review_status: z.enum(["pendente", "revisado", "rejeitado"]),
+  id: z
+    .string()
+    .refine(
+      (v) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ||
+        !isSupabaseConfigured(),
+      "Documento inválido."
+    ),
+  review_status: z.enum(["pendente", "revisado", "rejeitado"], {
+    error: "Escolha o status da revisão.",
+  }),
 });
 
 export async function updateReviewStatusAction(
@@ -88,6 +98,8 @@ export async function updateReviewStatusAction(
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
+  const writer = await requireWriterAction();
+  if (!writer.ok) return { error: writer.error };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const supabase = await createClient();

@@ -26,7 +26,9 @@ async function audit(
       user_id: userId && !userId.startsWith("demo") ? userId : null,
       action,
       entity_type: "settings",
-      entity_id: "1",
+      // entity_id é uuid: com "1" o registro falhava e a mudança não ficava
+      // na auditoria. A configuração é única, então vai sem id.
+      entity_id: null,
     });
   } catch {
     // não bloqueia

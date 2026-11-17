@@ -77,6 +77,31 @@ export function PaymentDialog({
   onClose: () => void;
 }) {
   const isEdit = Boolean(payment);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Editar pagamento" : "Novo pagamento"}
+      className="max-w-lg"
+    >
+      {/* O formulário (e o resultado do envio) nasce de novo a cada abertura. */}
+      {open && <PaymentForm payment={payment} contracts={contracts} clients={clients} onClose={onClose} />}
+    </Dialog>
+  );
+}
+
+function PaymentForm({
+  payment,
+  contracts,
+  clients,
+  onClose,
+}: {
+  payment: Payment | null;
+  contracts: SelectOption[];
+  clients: SelectOption[];
+  onClose: () => void;
+}) {
+  const isEdit = Boolean(payment);
   const [state, action] = useActionState(
     isEdit ? updatePaymentAction : createPaymentAction,
     initial
@@ -90,109 +115,102 @@ export function PaymentDialog({
   }, [state.ok, onClose]);
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={isEdit ? "Editar pagamento" : "Novo pagamento"}
-      className="max-w-lg"
-    >
-      <form action={action} className="space-y-3">
-        {isEdit && payment && (
-          <input type="hidden" name="id" value={payment.id} />
-        )}
+    <form action={action} className="space-y-3">
+      {isEdit && payment && (
+        <input type="hidden" name="id" value={payment.id} />
+      )}
 
+      <div className="space-y-1.5">
+        <FieldLabel>Descrição</FieldLabel>
+        <Input
+          name="description"
+          defaultValue={payment?.description ?? ""}
+          placeholder="Honorários iniciais, parcela 1/4..."
+        />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <FieldLabel>Descrição</FieldLabel>
+          <FieldLabel>Valor (R$) *</FieldLabel>
           <Input
-            name="description"
-            defaultValue={payment?.description ?? ""}
-            placeholder="Honorários iniciais, parcela 1/4..."
+            name="amount"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={payment?.amount ?? ""}
+            required
           />
         </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>Valor (R$) *</FieldLabel>
-            <Input
-              name="amount"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={payment?.amount ?? ""}
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Status *</FieldLabel>
-            <Select
-              name="status"
-              defaultValue={payment?.status ?? "pendente"}
-              required
-            >
-              {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {PAYMENT_STATUS_LABELS[s]}
-                  </option>
-                )
-              )}
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>Vencimento</FieldLabel>
-            <Input
-              type="date"
-              name="due_date"
-              defaultValue={toDateInput(payment?.due_date)}
-            />
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Data do pagamento</FieldLabel>
-            <Input
-              type="date"
-              name="paid_at"
-              defaultValue={toDateInput(payment?.paid_at)}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>Contrato</FieldLabel>
-            <Select name="contract_id" defaultValue={payment?.contract_id ?? ""}>
-              <option value="">Sem vínculo</option>
-              {contracts.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
+        <div className="space-y-1.5">
+          <FieldLabel>Status *</FieldLabel>
+          <Select
+            name="status"
+            defaultValue={payment?.status ?? "pendente"}
+            required
+          >
+            {(Object.keys(PAYMENT_STATUS_LABELS) as PaymentStatus[]).map(
+              (s) => (
+                <option key={s} value={s}>
+                  {PAYMENT_STATUS_LABELS[s]}
                 </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Cliente</FieldLabel>
-            <Select name="client_id" defaultValue={payment?.client_id ?? ""}>
-              <option value="">Sem vínculo</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
-          </div>
+              )
+            )}
+          </Select>
         </div>
+      </div>
 
-        <Feedback state={state} />
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Submit label={isEdit ? "Salvar" : "Criar pagamento"} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <FieldLabel>Vencimento</FieldLabel>
+          <Input
+            type="date"
+            name="due_date"
+            defaultValue={toDateInput(payment?.due_date)}
+          />
         </div>
-      </form>
-    </Dialog>
+        <div className="space-y-1.5">
+          <FieldLabel>Data do pagamento</FieldLabel>
+          <Input
+            type="date"
+            name="paid_at"
+            defaultValue={toDateInput(payment?.paid_at)}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <FieldLabel>Contrato</FieldLabel>
+          <Select name="contract_id" defaultValue={payment?.contract_id ?? ""}>
+            <option value="">Sem vínculo</option>
+            {contracts.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel>Cliente</FieldLabel>
+          <Select name="client_id" defaultValue={payment?.client_id ?? ""}>
+            <option value="">Sem vínculo</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      <Feedback state={state} />
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Submit label={isEdit ? "Salvar" : "Criar pagamento"} />
+      </div>
+    </form>
   );
 }

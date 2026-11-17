@@ -55,7 +55,7 @@ type DocumentRawRow = {
   leads: { full_name?: string | null } | null;
   clients: { full_name?: string | null } | null;
   cases: { title?: string | null } | null;
-  processes: { number?: string | null } | null;
+  processes: { process_number?: string | null } | null;
   users: { name?: string | null } | null;
 };
 
@@ -71,7 +71,7 @@ export async function listDocuments(
     .select(
       `id, file_name, file_type, file_size, category, review_status,
        storage_path, lead_id, client_id, case_id, process_id, uploaded_by, created_at,
-       leads(full_name), clients(full_name), cases(title), processes(number),
+       leads(full_name), clients(full_name), cases(title), processes(process_number),
        users:uploaded_by(name)`,
       { count: "exact" }
     )
@@ -114,7 +114,7 @@ export async function listDocuments(
     case_id: r.case_id,
     case_title: r.cases?.title ?? null,
     process_id: r.process_id,
-    process_number: r.processes?.number ?? null,
+    process_number: r.processes?.process_number ?? null,
     uploaded_by: r.uploaded_by,
     uploader_name: r.users?.name ?? null,
     created_at: r.created_at,
@@ -138,7 +138,7 @@ export async function getDocument(id: string): Promise<DocumentRow | null> {
     .select(
       `id, file_name, file_type, file_size, category, review_status,
        storage_path, lead_id, client_id, case_id, process_id, uploaded_by, created_at,
-       leads(full_name), clients(full_name), cases(title), processes(number),
+       leads(full_name), clients(full_name), cases(title), processes(process_number),
        users:uploaded_by(name)`
     )
     .eq("id", id)
@@ -161,7 +161,7 @@ export async function getDocument(id: string): Promise<DocumentRow | null> {
     case_id: r.case_id,
     case_title: r.cases?.title ?? null,
     process_id: r.process_id,
-    process_number: r.processes?.number ?? null,
+    process_number: r.processes?.process_number ?? null,
     uploaded_by: r.uploaded_by,
     uploader_name: r.users?.name ?? null,
     created_at: r.created_at,

@@ -78,6 +78,31 @@ export function ContractDialog({
   onClose: () => void;
 }) {
   const isEdit = Boolean(contract);
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={isEdit ? "Editar contrato" : "Novo contrato"}
+      className="max-w-lg"
+    >
+      {/* O formulário (e o resultado do envio) nasce de novo a cada abertura. */}
+      {open && <ContractForm contract={contract} clients={clients} cases={cases} onClose={onClose} />}
+    </Dialog>
+  );
+}
+
+function ContractForm({
+  contract,
+  clients,
+  cases,
+  onClose,
+}: {
+  contract: Contract | null;
+  clients: SelectOption[];
+  cases: SelectOption[];
+  onClose: () => void;
+}) {
+  const isEdit = Boolean(contract);
   const [state, action] = useActionState(
     isEdit ? updateContractAction : createContractAction,
     initial
@@ -91,114 +116,107 @@ export function ContractDialog({
   }, [state.ok, onClose]);
 
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title={isEdit ? "Editar contrato" : "Novo contrato"}
-      className="max-w-lg"
-    >
-      <form action={action} className="space-y-3">
-        {isEdit && contract && (
-          <input type="hidden" name="id" value={contract.id} />
-        )}
+    <form action={action} className="space-y-3">
+      {isEdit && contract && (
+        <input type="hidden" name="id" value={contract.id} />
+      )}
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>Cliente *</FieldLabel>
-            <Select
-              name="client_id"
-              defaultValue={contract?.client_id ?? ""}
-              required
-            >
-              <option value="">Selecione o cliente</option>
-              {clients.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Caso (opcional)</FieldLabel>
-            <Select name="case_id" defaultValue={contract?.case_id ?? ""}>
-              <option value="">Sem vínculo</option>
-              {cases.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>Tipo</FieldLabel>
-            <Input
-              name="contract_type"
-              defaultValue={contract?.contract_type ?? ""}
-              placeholder="Honorários, êxito, consultoria..."
-            />
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Status *</FieldLabel>
-            <Select
-              name="status"
-              defaultValue={contract?.status ?? "rascunho"}
-              required
-            >
-              {(Object.keys(CONTRACT_STATUS_LABELS) as ContractStatus[]).map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {CONTRACT_STATUS_LABELS[s]}
-                  </option>
-                )
-              )}
-            </Select>
-          </div>
-        </div>
-
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <FieldLabel>Valor (R$)</FieldLabel>
-            <Input
-              name="value"
-              type="number"
-              step="0.01"
-              min="0"
-              defaultValue={contract?.value ?? ""}
-              placeholder="0,00"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <FieldLabel>Data de assinatura</FieldLabel>
-            <Input
-              type="date"
-              name="signed_at"
-              defaultValue={toDateInput(contract?.signed_at)}
-            />
-          </div>
-        </div>
-
+      <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <FieldLabel>Condições de pagamento</FieldLabel>
-          <Textarea
-            name="payment_terms"
-            rows={2}
-            defaultValue={contract?.payment_terms ?? ""}
-            placeholder="Ex.: 30% entrada + 4x mensais"
+          <FieldLabel>Cliente *</FieldLabel>
+          <Select
+            name="client_id"
+            defaultValue={contract?.client_id ?? ""}
+            required
+          >
+            <option value="">Selecione o cliente</option>
+            {clients.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel>Caso (opcional)</FieldLabel>
+          <Select name="case_id" defaultValue={contract?.case_id ?? ""}>
+            <option value="">Sem vínculo</option>
+            {cases.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <FieldLabel>Tipo</FieldLabel>
+          <Input
+            name="contract_type"
+            defaultValue={contract?.contract_type ?? ""}
+            placeholder="Honorários, êxito, consultoria..."
           />
         </div>
-
-        <Feedback state={state} />
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Submit label={isEdit ? "Salvar" : "Criar contrato"} />
+        <div className="space-y-1.5">
+          <FieldLabel>Status *</FieldLabel>
+          <Select
+            name="status"
+            defaultValue={contract?.status ?? "rascunho"}
+            required
+          >
+            {(Object.keys(CONTRACT_STATUS_LABELS) as ContractStatus[]).map(
+              (s) => (
+                <option key={s} value={s}>
+                  {CONTRACT_STATUS_LABELS[s]}
+                </option>
+              )
+            )}
+          </Select>
         </div>
-      </form>
-    </Dialog>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <FieldLabel>Valor (R$)</FieldLabel>
+          <Input
+            name="value"
+            type="number"
+            step="0.01"
+            min="0"
+            defaultValue={contract?.value ?? ""}
+            placeholder="0,00"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <FieldLabel>Data de assinatura</FieldLabel>
+          <Input
+            type="date"
+            name="signed_at"
+            defaultValue={toDateInput(contract?.signed_at)}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <FieldLabel>Condições de pagamento</FieldLabel>
+        <Textarea
+          name="payment_terms"
+          rows={2}
+          defaultValue={contract?.payment_terms ?? ""}
+          placeholder="Ex.: 30% entrada + 4x mensais"
+        />
+      </div>
+
+      <Feedback state={state} />
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Submit label={isEdit ? "Salvar" : "Criar contrato"} />
+      </div>
+    </form>
   );
 }
