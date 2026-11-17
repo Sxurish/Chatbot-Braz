@@ -120,6 +120,42 @@ cria:
 | Bloco em Configurações | `src/app/(crm)/configuracoes/digest-settings.tsx`, `src/lib/digest/recipients.ts` |
 | Testes | `tests/digest.test.ts` |
 
+## Alerta de rotina com falha (modelo `alerta_automacao`, fase 5)
+
+Quando uma rotina automática (andamentos, resumo, intimações) falha **2 vezes
+seguidas**, o CRM cria uma notificação para cada Admin ativo e, se o modelo
+abaixo estiver aprovado e configurado, manda também um WhatsApp para os
+Admins com número cadastrado na Equipe. Só avisa na 2ª falha seguida (não a
+cada falha). Se a rotina voltar a funcionar e falhar 2 vezes de novo, avisa de
+novo. Detalhes em [AUTOMACOES.md](AUTOMACOES.md).
+
+### Modelo de mensagem na Meta (passo a passo)
+
+1. No **WhatsApp Manager**, vá em **Gerenciamento de conta → Modelos de
+   mensagem** e clique em **Criar modelo**.
+2. Categoria: **Utilidade (Utility)**. Tipo: **Padrão / Default**.
+3. Nome: `alerta_automacao` (ou outro nome; use o mesmo em
+   `WHATSAPP_ALERT_TEMPLATE`).
+4. Idioma: **Português (BR)** (`pt_BR`).
+5. Corpo, exatamente:
+
+   ```
+   Atenção: a rotina {{1}} do CRM falhou {{2}} vezes seguidas. Último erro: {{3}}. Veja em Saúde das automações.
+   ```
+
+6. Exemplos das variáveis (a Meta pede):
+   - `{{1}}`: `Andamentos dos tribunais`
+   - `{{2}}`: `2`
+   - `{{3}}`: `O DataJud demorou demais para responder.`
+7. Sem cabeçalho, rodapé ou botões. Envie para análise.
+8. **Depois de aprovado**, preencha na Vercel `WHATSAPP_ALERT_TEMPLATE=alerta_automacao`
+   e faça um novo deploy.
+
+- Sem `WHATSAPP_ALERT_TEMPLATE` (ou sem `WHATSAPP_ACCESS_TOKEN` e
+  `WHATSAPP_PHONE_NUMBER_ID`), o alerta fica só nas **Notificações** do CRM.
+- O resultado do envio (quantos foram, erros da Meta) fica gravado na
+  execução que gerou o alerta, visível em **Saúde das automações**.
+
 ## Assistente pelo WhatsApp
 
 O Dr. Jean (e quem mais o Admin autorizar) consulta o CRM pelo WhatsApp,

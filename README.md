@@ -33,9 +33,17 @@ gestão de leads, clientes, casos, documentos, agenda e tarefas.
   financeiros no WhatsApp. **Assistente pelo WhatsApp** para números da equipe
   cadastrados pelo Admin, com cadastro só depois de responder "OK". Guia em
   **`docs/RESUMO-E-WHATSAPP.md`**.
+- **Prazos** (fase 5): calculadora de prazos do TJSP (dias úteis ou corridos,
+  publicação no DJEN, recesso, feriados e suspensões com a fonte), conta passo a
+  passo, confirmação que cria a tarefa e histórico que o banco não deixa editar
+  nem apagar. Guia em **`docs/PRAZOS.md`**.
+- **Saúde das automações** (fase 5, só Admin): última execução de cada rotina,
+  erros, alerta na 2ª falha seguida e diagnóstico das variáveis e conexões. Guia
+  em **`docs/AUTOMACOES.md`**.
 - Limite de gasto mensal (US$ 50 por padrão) com aviso em 80%.
 - Guia e implantação em **`docs/ASSISTENTE.md`**; SQL em
-  `supabase/assistente-fase1.sql` a `assistente-fase4.sql`.
+  `supabase/assistente-fase1.sql` a `assistente-fase4.sql`, `fase5-prazos.sql` e
+  `fase5-automacoes.sql`.
 
 ### 🔑 Primeiro acesso por convite
 

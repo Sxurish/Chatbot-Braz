@@ -126,7 +126,7 @@ existentes pelo assistente não está no escopo.
 | Rota de chat (streaming NDJSON) | `src/app/api/assistente/route.ts` |
 | Histórico | `src/app/api/assistente/conversas/**` |
 | Laço com ferramentas | `src/lib/assistant/agent.ts` |
-| Ferramentas de consulta (inclui `andamentos_do_processo` e `andamentos_recentes`) | `src/lib/assistant/tools.ts` |
+| Ferramentas de consulta (inclui `andamentos_do_processo`, `andamentos_recentes` e `calcular_prazo`, que faz a conta do prazo no calendário do TJSP sem gravar nada; ver [PRAZOS.md](PRAZOS.md)) | `src/lib/assistant/tools.ts` |
 | Andamentos recentes de vários processos (consulta do assistente) | `src/lib/data/movements-recent.ts` |
 | Ferramentas de rascunho (`preparar_*`, inclui `preparar_andamento`) | `src/lib/assistant/draft-tools.ts` |
 | Campos, validação e linhas do banco | `src/lib/assistant/draft-schema.ts` |
