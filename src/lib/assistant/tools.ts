@@ -15,6 +15,9 @@ import {
   listProcesses,
 } from "@/lib/data/fase6";
 import { listMovements } from "@/lib/data/movements";
+import { listTemplates } from "@/lib/data/templates-read";
+import { isAutoFilled, TEMPLATE_CATEGORY_LABELS } from "@/lib/data/templates-types";
+import { checkTemplateGeneration } from "@/lib/data/templates-permissions";
 import { listRecentMovements } from "@/lib/data/movements-recent";
 import { listActiveCalendarDays } from "@/lib/data/prazos";
 import { brDay } from "@/lib/prazos/calendar";
@@ -66,8 +69,8 @@ export interface ToolContext {
   attachment?: { id: string; name: string } | null;
   /** De onde veio a pergunta (fase 4: WhatsApp não tem cartão nem financeiro). */
   channel?: "painel" | "whatsapp";
-  /** Avisa a interface de algo novo (ex.: um rascunho para conferir). */
-  emit?: (event: { type: "draft"; draft: unknown }) => void;
+  /** Avisa a interface de algo novo (ex.: um rascunho para conferir ou uma minuta). */
+  emit?: (event: { type: "draft"; draft: unknown } | { type: "minuta"; minuta: unknown }) => void;
 }
 
 export interface AssistantTool<S extends z.ZodType = z.ZodType> {
@@ -817,6 +820,42 @@ const listarEquipe = defineTool({
 });
 
 // ---------------------------------------------------------------------------
+// Modelos de documento (tela Templates)
+// ---------------------------------------------------------------------------
+
+const listarModelos = defineTool({
+  name: "listar_modelos",
+  label: "Consultando os modelos",
+  description:
+    "Lista os modelos de documento ativos da tela Templates (procuração, declaração, contrato etc.) com id, nome, categoria e campos. Cada campo diz se o CRM preenche sozinho (automatico=true) ou se precisa de valor (automatico=false). pode_gerar diz se quem pergunta pode gerar esse modelo por aqui. Use antes de preparar_modelo.",
+  schema: z.object({
+    texto: z.string().max(120).optional().describe("Trecho do nome ou da categoria (ex.: procuração)."),
+  }),
+  async run(input, ctx) {
+    const templates = await listTemplates(true);
+    const filtered = templates.filter((t) =>
+      matchesText(input.texto, t.name, t.description, t.category, TEMPLATE_CATEGORY_LABELS[t.category])
+    );
+    return {
+      total: filtered.length,
+      modelos: filtered.map((t) => {
+        const check = checkTemplateGeneration(ctx.user.role, t, ctx.channel ?? "painel");
+        return {
+          id: t.id,
+          nome: t.name,
+          descricao: t.description,
+          categoria: TEMPLATE_CATEGORY_LABELS[t.category] ?? t.category,
+          campos: (t.placeholders ?? []).map((p) => ({ nome: p, automatico: isAutoFilled(p) })),
+          pode_gerar: check.ok,
+          ...(check.ok ? {} : { motivo: check.error }),
+        };
+      }),
+      link: "/templates",
+    };
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Financeiro — só Admin
 // ---------------------------------------------------------------------------
 
@@ -975,6 +1014,7 @@ export const ALL_TOOLS: AssistantTool[] = [
   listarFollowUps,
   resumoDoEscritorio,
   listarEquipe,
+  listarModelos,
   resumoFinanceiro,
   buscarPagamentos,
   buscarContratos,

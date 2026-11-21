@@ -5,6 +5,8 @@ import { getTeamMemberContext } from "@/lib/supabase/request-context";
 import type { ToolUseRecord } from "@/lib/assistant/agent";
 import type { UsageTotals } from "@/lib/assistant/cost";
 import { getIntimacoesMonthCostUsd } from "@/lib/intimacoes/ai-cost";
+import { getMinutasMonthCostUsd } from "@/lib/minutas/cost";
+import { demoMinutasMonthCost } from "@/lib/minutas/store";
 
 /**
  * Persistência das conversas do assistente.
@@ -31,6 +33,8 @@ export interface StoredMessage {
   tools_used: ToolUseRecord[];
   /** Arquivos enviados junto com a pergunta (fase 2). */
   attachments: { id: string; name: string }[];
+  /** Modelo que deu a resposta (só nas respostas do assistente). */
+  model?: string | null;
   created_at: string;
 }
 
@@ -96,22 +100,55 @@ export async function getMonthSpendUsd(): Promise<number> {
       state.monthKey = monthKey();
       state.monthCost = 0;
     }
-    return state.monthCost;
+    return state.monthCost + demoMinutasMonthCost();
   }
   const supabase = await createClient();
-  // A leitura das intimações pela IA (fase 5) entra no mesmo limite do mês.
+  // A leitura das intimações pela IA (fase 5) e as minutas entram no mesmo limite do mês.
   const intimacoes = getIntimacoesMonthCostUsd(supabase);
   if (getTeamMemberContext()) {
     // Service role (WhatsApp): a função do banco depende do login (auth.uid())
     // e devolveria zero. Soma direto, em páginas.
-    return (await sumMonthCostDirect(supabase)) + (await intimacoes);
+    const minutas = getMinutasMonthCostUsd(supabase, { serviceRole: true });
+    return (await sumMonthCostDirect(supabase)) + (await intimacoes) + (await minutas);
   }
+  const minutas = getMinutasMonthCostUsd(supabase);
   const { data, error } = await supabase.rpc("assistant_month_cost");
   if (error) {
     if (isMissingTable(error)) throw new AssistantSetupError();
     throw new Error(`Falha ao ler o gasto do mês: ${error.message}`);
   }
-  return Number(data ?? 0) + (await intimacoes);
+  return Number(data ?? 0) + (await intimacoes) + (await minutas);
+}
+
+/** Gasto do mês separado entre Haiku e Sonnet (Configurações, só Admin). */
+export interface MonthSpendByModel {
+  haiku: number;
+  sonnet: number;
+}
+
+/**
+ * Divide o gasto do mês por modelo. Usa a função assistant_month_cost_by_model
+ * (supabase/assistente-documentos.sql); sem ela, devolve null e a tela mostra
+ * só o total. A leitura das intimações e as minutas usam o Sonnet e entram nele.
+ * Uma pergunta que o Haiku passou para o Sonnet conta como Sonnet.
+ */
+export async function getMonthSpendByModel(): Promise<MonthSpendByModel | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("assistant_month_cost_by_model");
+  if (error) return null;
+  const out: MonthSpendByModel = { haiku: 0, sonnet: 0 };
+  for (const row of (data ?? []) as { model: string | null; cost_usd: number | string | null }[]) {
+    const cost = Number(row.cost_usd ?? 0);
+    if ((row.model ?? "").includes("haiku")) out.haiku += cost;
+    else out.sonnet += cost;
+  }
+  const [intimacoes, minutas] = await Promise.all([
+    getIntimacoesMonthCostUsd(supabase),
+    getMinutasMonthCostUsd(supabase),
+  ]);
+  out.sonnet += intimacoes + minutas;
+  return out;
 }
 
 /** Início do mês corrente em São Paulo (sempre -03:00), em ISO. */
@@ -296,7 +333,7 @@ export async function listMessages(
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(limit);
-  let { data, error } = await query("id, role, content, tools_used, attachments, created_at");
+  let { data, error } = await query("id, role, content, tools_used, attachments, model, created_at");
   if (error?.code === "42703") {
     // Banco ainda sem a fase 2 (coluna attachments): segue sem os anexos.
     ({ data, error } = await query("id, role, content, tools_used, created_at"));
@@ -334,6 +371,7 @@ export async function saveMessage(
       content: msg.content,
       tools_used: msg.toolsUsed ?? [],
       attachments: msg.attachments ?? [],
+      model: msg.model ?? null,
       created_at: now,
     });
     conv.updated_at = now;

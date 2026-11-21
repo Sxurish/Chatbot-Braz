@@ -3,7 +3,23 @@ import {
   ASSISTANT_MAX_TOKENS,
   ASSISTANT_MAX_TOOL_ROUNDS,
 } from "@/lib/assistant/config";
-import { addUsage, EMPTY_USAGE, type UsageTotals } from "@/lib/assistant/cost";
+import {
+  addUsage,
+  computeTurnCostUsd,
+  EMPTY_USAGE,
+  sumUsageTotals,
+  type UsageByModel,
+  type UsageTotals,
+} from "@/lib/assistant/cost";
+import {
+  decideEscalation,
+  ESCALATION_TOOL,
+  ESCALATION_TOOL_NAME,
+  resolveModel,
+  tierSettings,
+  type EscalationDecision,
+  type ModelTier,
+} from "@/lib/assistant/model-router";
 import {
   executeTool,
   toApiTools,
@@ -28,7 +44,9 @@ export interface MessagesClientLike {
 
 export type AgentEvent =
   | { type: "text"; delta: string }
-  | { type: "tool"; name: string; label: string };
+  | { type: "tool"; name: string; label: string }
+  /** Modelo que está respondendo. escalated=true: o Haiku passou a pergunta ao Sonnet e o texto recomeça. */
+  | { type: "model"; tier: ModelTier; model: string; escalated: boolean };
 
 export interface ToolUseRecord {
   name: string;
@@ -44,6 +62,8 @@ export interface AgentResult {
   toolsUsed: ToolUseRecord[];
   usage: UsageTotals;
   stopReason: Anthropic.StopReason | null;
+  /** O modelo pediu a análise detalhada e a escalada foi aceita (o turno deve ser refeito). */
+  escalation?: { motivo: string };
 }
 
 export interface RunAgentOptions {
@@ -59,6 +79,14 @@ export interface RunAgentOptions {
   /** Esforço de raciocínio: "low" nas consultas, "medium" na leitura de documentos. */
   effort?: "low" | "medium" | "high";
   maxTokens?: number;
+  /**
+   * Oferece a ferramenta pedir_analise_detalhada (só ao Haiku). A chamada é
+   * interceptada: se aceita, o laço para sem executar o resto da rodada e
+   * devolve `escalation`; se negada, o modelo recebe o motivo e segue.
+   */
+  escalation?: {
+    decide: (state: { toolsUsed: ToolUseRecord[]; roundHasDraftCall: boolean }) => EscalationDecision;
+  };
 }
 
 /** Limite de caracteres de um resultado de ferramenta enviado ao modelo. */
@@ -92,7 +120,7 @@ function serialize(result: unknown): string {
  */
 export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
   const maxRounds = opts.maxRounds ?? ASSISTANT_MAX_TOOL_ROUNDS;
-  const apiTools = toApiTools(opts.tools);
+  const apiTools = toApiTools(opts.escalation ? [...opts.tools, ESCALATION_TOOL] : opts.tools);
   const messages: Anthropic.MessageParam[] = [...opts.messages];
   const toolsUsed: ToolUseRecord[] = [];
   let usage = EMPTY_USAGE;
@@ -153,8 +181,33 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
       (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
     );
 
+    // Pedido de análise detalhada: decide antes de executar o resto da rodada,
+    // para não criar rascunho que o Sonnet criaria de novo.
+    const escalationCalls = calls.filter((c) => c.name === ESCALATION_TOOL_NAME);
+    let escalationDenied: string | null = null;
+    if (escalationCalls.length > 0) {
+      const decision = opts.escalation
+        ? opts.escalation.decide({
+            toolsUsed,
+            roundHasDraftCall: calls.some((c) => opts.tools.find((t) => t.name === c.name)?.writeOnly),
+          })
+        : ({ allow: false, message: "Ferramenta não disponível agora." } as const);
+      if (decision.allow) {
+        const input = escalationCalls[0].input as { motivo?: unknown } | null;
+        const motivo = typeof input?.motivo === "string" ? input.motivo.slice(0, 300) : "";
+        opts.onEvent?.({ type: "tool", name: ESCALATION_TOOL_NAME, label: ESCALATION_TOOL.label });
+        toolsUsed.push({ name: ESCALATION_TOOL_NAME, ok: true, links: [] });
+        return { text, toolsUsed, usage, stopReason, escalation: { motivo } };
+      }
+      escalationDenied = decision.message;
+    }
+
     const results = await Promise.all(
       calls.map(async (call): Promise<Anthropic.ToolResultBlockParam> => {
+        if (call.name === ESCALATION_TOOL_NAME) {
+          toolsUsed.push({ name: call.name, ok: false, links: [] });
+          return { type: "tool_result", tool_use_id: call.id, content: escalationDenied ?? "" };
+        }
         const tool = opts.tools.find((t) => t.name === call.name);
         opts.onEvent?.({ type: "tool", name: call.name, label: tool?.label ?? "Consultando o CRM" });
         // Ferramenta fora da lista desta pessoa (ex.: financeiro sem ser Admin) é negada.
@@ -191,6 +244,86 @@ export async function runAgent(opts: RunAgentOptions): Promise<AgentResult> {
   }
 
   return { text, toolsUsed, usage, stopReason };
+}
+
+export interface RunRoutedAgentOptions
+  extends Omit<RunAgentOptions, "model" | "system" | "effort" | "maxTokens" | "escalation"> {
+  /** Nível com que a pergunta começa (chooseInitialTier). */
+  initialTier: ModelTier;
+  /** Instruções de cada nível; canEscalate diz se a ferramenta de escalada está disponível. */
+  buildSystem: (info: { tier: ModelTier; canEscalate: boolean }) => Anthropic.TextBlockParam[];
+  /** Sonnet liberado pelo orçamento (BudgetStatus.allowDocuments). */
+  detailedAllowed: boolean;
+  /** Troca o modelo de cada nível (testes). Padrão: resolveModel. */
+  resolve?: (tier: ModelTier) => string;
+}
+
+export interface RoutedAgentResult extends AgentResult {
+  /** Modelo que deu a resposta final. */
+  model: string;
+  tier: ModelTier;
+  escalated: boolean;
+  /** Tokens por modelo realmente usado. */
+  usageByModel: UsageByModel;
+  /** Custo somado, cada parte com o preço do seu modelo. */
+  costUsd: number;
+}
+
+/**
+ * Pergunta com troca automática de modelo: começa no nível escolhido e, se o
+ * Haiku pedir a análise detalhada (e for permitido), refaz o turno inteiro no
+ * Sonnet com o mesmo histórico. No máximo uma escalada: o Sonnet não recebe a
+ * ferramenta.
+ */
+export async function runRoutedAgent(opts: RunRoutedAgentOptions): Promise<RoutedAgentResult> {
+  const { initialTier, buildSystem, detailedAllowed, resolve = resolveModel, ...base } = opts;
+  const firstModel = resolve(initialTier);
+  const detailedModel = resolve("detalhado");
+  const canEscalate = initialTier === "rapido" && firstModel !== detailedModel;
+
+  opts.onEvent?.({ type: "model", tier: initialTier, model: firstModel, escalated: false });
+  const first = await runAgent({
+    ...base,
+    model: firstModel,
+    system: buildSystem({ tier: initialTier, canEscalate }),
+    ...tierSettings(initialTier),
+    ...(canEscalate
+      ? { escalation: { decide: (s) => decideEscalation({ detailedAllowed, ...s }) } }
+      : {}),
+  });
+  const usageByModel: UsageByModel = { [firstModel]: first.usage };
+
+  if (!first.escalation) {
+    return {
+      ...first,
+      model: firstModel,
+      tier: initialTier,
+      escalated: false,
+      usageByModel,
+      costUsd: computeTurnCostUsd(usageByModel),
+    };
+  }
+
+  opts.onEvent?.({ type: "model", tier: "detalhado", model: detailedModel, escalated: true });
+  const second = await runAgent({
+    ...base,
+    model: detailedModel,
+    system: buildSystem({ tier: "detalhado", canEscalate: false }),
+    ...tierSettings("detalhado"),
+  });
+  usageByModel[detailedModel] = sumUsageTotals(usageByModel[detailedModel] ?? EMPTY_USAGE, second.usage);
+
+  return {
+    text: second.text,
+    toolsUsed: [...first.toolsUsed, ...second.toolsUsed],
+    usage: sumUsageTotals(first.usage, second.usage),
+    stopReason: second.stopReason,
+    model: detailedModel,
+    tier: "detalhado",
+    escalated: true,
+    usageByModel,
+    costUsd: computeTurnCostUsd(usageByModel),
+  };
 }
 
 /**

@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { OFFICE_OAB } from "@/lib/constants";
+import { ESCALATION_TOOL_NAME, SONNET_DIRECT_TOOLS } from "@/lib/assistant/model-router";
 import type { TeamUser } from "@/lib/types";
 
 /**
@@ -12,6 +13,8 @@ O que você faz:
 - Responde perguntas rápidas sobre leads, clientes, casos, processos, andamentos, prazos, tarefas, agenda e follow-ups, sempre consultando o CRM com as ferramentas.
 - Resume fichas e listas de forma objetiva, em português do Brasil, com tom profissional e direto.
 - Prepara cadastros a partir de texto, PDF ou print, sempre como rascunho que a pessoa confere e confirma.
+- Preenche modelos de documento da tela Templates (procuração, declaração, contrato etc.) para um lead ou cliente, sempre como rascunho que a pessoa confere e confirma.
+- Redige minutas (manifestação ou petição simples, notificação extrajudicial, e-mail ou carta ao cliente, resumo do caso) com a ferramenta redigir_minuta, para Admin e Advogado(a) revisarem.
 
 Regras:
 1. Nunca invente dados. Tudo o que você afirmar sobre pessoas, processos, datas, prazos ou valores precisa ter vindo de uma ferramenta nesta conversa. Se a ferramenta não trouxer, diga que não encontrou no CRM e sugira onde procurar.
@@ -32,7 +35,32 @@ Regras:
 10. Você não dá parecer jurídico definitivo. Prazos e datas mostrados são os cadastrados no CRM; o prazo oficial é o da intimação e o do sistema do tribunal. Lembre disso quando falar de prazos.
 11. Seja breve: comece pela resposta, use listas curtas quando houver vários itens e não repita a pergunta. Se a busca trouxer muitos resultados, mostre os principais e diga quantos há no total.
 12. Quando a pergunta for ambígua (ex.: dois leads com o mesmo nome), mostre as opções em vez de escolher uma.
-13. Se a pessoa estiver numa tela específica (informada como "Tela atual"), use isso para entender "este lead", "esta página" etc.`;
+13. Se a pessoa estiver numa tela específica (informada como "Tela atual"), use isso para entender "este lead", "esta página" etc.
+14. Modelos de documento: para "gera a procuração do X", use listar_modelos para achar o modelo e buscar_leads ou buscar_clientes para achar a pessoa, e então preparar_modelo com os campos manuais que tiver. Nunca escreva o documento no chat. Se não houver modelo adequado, diga que não há e aponte a tela [Templates](/templates). Só Advogado(a) e Admin geram documentos de modelo; se listar_modelos disser pode_gerar=false, explique o motivo com educação.
+15. Minutas: para pedir peça, petição, manifestação, minuta, notificação, e-mail ou carta ao cliente ou resumo do caso, use redigir_minuta (ache antes os ids com as ferramentas de busca e passe as instruções do advogado com as palavras dele). Nunca escreva a peça direto no chat: a minuta aparece num cartão editável. Depois, responda em uma ou duas frases e lembre que é MINUTA, a revisar antes de usar. Se a ferramenta disser que o papel não tem permissão (só Admin e Advogado(a)) ou que as minutas estão pausadas pelo limite do mês, explique isso com educação.`;
+
+
+/**
+ * Seção "Escolha do modelo": só vai para o Haiku quando a ferramenta de
+ * escalada está disponível. Se houver uma ferramenta que já chama o Sonnet
+ * sozinha (SONNET_DIRECT_TOOLS, ex.: redigir_minuta), a minuta vai por ela.
+ */
+export function buildModelChoiceInstructions(toolNames: readonly string[] = []): string {
+  const direct = SONNET_DIRECT_TOOLS.filter((n) => toolNames.includes(n));
+  const draftLine = direct.length
+    ? `- Para redigir minuta ou texto longo, use ${direct.join(" ou ")}: essa ferramenta já usa o modelo detalhado, então não peça ${ESCALATION_TOOL_NAME} para isso.`
+    : "- pedirem a redação de um texto longo ou de uma minuta (petição, parecer, notificação, e-mail longo para cliente);";
+  return `Escolha do modelo:
+Você é o modelo rápido (Claude Haiku). Existe um modelo detalhado (Claude Sonnet), mais caro e mais cuidadoso, que você aciona com a ferramenta ${ESCALATION_TOOL_NAME}. Quando você chama, a pergunta é refeita do zero pelo modelo detalhado com o mesmo histórico, e o que você escreveu nesta resposta não aparece.
+Peça a análise detalhada quando:
+- a análise envolver muitos andamentos ou intimações (ex.: resumir o histórico inteiro de um processo ou ler várias intimações juntas);
+- a pergunta comparar vários processos, casos ou clientes;
+${draftLine}
+- a pergunta jurídica for complexa (tese, estratégia, interpretação de lei, jurisprudência ou risco do caso);
+- você não tiver certeza da resposta.
+Responda você mesmo em consultas simples (um lead, um processo, os prazos da semana), listas, buscas e cadastros simples (preparar_*).
+Como pedir: chame ${ESCALATION_TOOL_NAME} sozinha, de preferência logo no começo, com um motivo curto, sem escrever texto antes. Nunca peça depois de preparar um rascunho nesta resposta. Se a ferramenta responder que a análise detalhada está pausada pelo limite do mês, responda você mesmo da melhor forma possível e avise isso em uma frase.`;
+}
 
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
@@ -46,7 +74,13 @@ export function buildSystemPrompt(
   user: TeamUser,
   isAdmin: boolean,
   now: Date,
-  options: { canWrite?: boolean } = {}
+  options: {
+    canWrite?: boolean;
+    /** Haiku com a ferramenta de escalada: inclui a seção "Escolha do modelo". */
+    canEscalate?: boolean;
+    /** Nomes das ferramentas oferecidas (para o ponto de extensão SONNET_DIRECT_TOOLS). */
+    toolNames?: readonly string[];
+  } = {}
 ): Anthropic.TextBlockParam[] {
   const today = new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -58,8 +92,16 @@ export function buildSystemPrompt(
     minute: "2-digit",
   }).format(now);
 
+  // A parte fixa (e a escolha do modelo, quando vai) fica no prefixo em cache.
+  const fixed: Anthropic.TextBlockParam[] = options.canEscalate
+    ? [
+        { type: "text", text: STATIC_INSTRUCTIONS },
+        { type: "text", text: buildModelChoiceInstructions(options.toolNames), cache_control: { type: "ephemeral" } },
+      ]
+    : [{ type: "text", text: STATIC_INSTRUCTIONS, cache_control: { type: "ephemeral" } }];
+
   return [
-    { type: "text", text: STATIC_INSTRUCTIONS, cache_control: { type: "ephemeral" } },
+    ...fixed,
     {
       type: "text",
       text: `Agora: ${today} (horário de Brasília).
@@ -93,4 +135,6 @@ export const WHATSAPP_INSTRUCTIONS = `Canal desta conversa: WhatsApp (a pessoa d
 - Não existe "Tela atual" nem cartão no WhatsApp. Quando preparar um rascunho (preparar_*), o sistema manda sozinho, logo depois da sua resposta, o resumo do rascunho e o pedido para a pessoa responder *OK* (grava) ou *CANCELAR* (descarta). Então só diga em uma frase o que preparou e o que ficou incerto; não repita os campos, não fale de cartão nem de botão Confirmar e nunca diga que gravou.
 - Se a pessoa pedir para corrigir um rascunho ainda não confirmado, prepare um rascunho novo já corrigido (o anterior é descartado automaticamente).
 - Dados financeiros (pagamentos, contratos, valores, honorários, situação financeira) NUNCA são enviados pelo WhatsApp, nem para Admin. Se pedirem, explique que por segurança o financeiro só aparece no CRM, com login.
-- Arquivos (PDF, fotos, prints) ainda não são lidos pelo WhatsApp: oriente a anexar pela página do assistente no CRM ([Assistente](/assistente)).`;
+- Documentos de modelo (preparar_modelo): contratos e honorários não são gerados pelo WhatsApp; oriente a gerar pela ficha do lead no CRM. Depois do OK, o link enviado abre a ficha no CRM, com login.
+- Arquivos (PDF, fotos, prints) ainda não são lidos pelo WhatsApp: oriente a anexar pela página do assistente no CRM ([Assistente](/assistente)).
+- Minutas (peças, petições, notificações, e-mails ao cliente, resumos do caso) não são feitas pelo WhatsApp: oriente a pedir pelo assistente no CRM ([Assistente](/assistente)) e não escreva a peça aqui.`;

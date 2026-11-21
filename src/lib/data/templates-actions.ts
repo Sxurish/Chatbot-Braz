@@ -4,25 +4,21 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import { getCurrentUser } from "@/lib/auth/current-user";
 import { requireAdminAction, requireWriterAction } from "@/lib/auth/require-admin";
-import { getSettings } from "@/lib/data/settings";
-import { LEGAL_AREA_LABELS } from "@/lib/constants";
 import {
   DOCX_MIME,
   MAX_TEMPLATE_SIZE,
   TEMPLATE_BUCKET,
 } from "@/lib/data/templates-types";
+import { extractPlaceholders, getTemplate } from "@/lib/data/templates-read";
 import {
-  downloadTemplateFile,
-  extractPlaceholders,
-  getTemplate,
-} from "@/lib/data/templates-read";
+  generateDocumentFromTemplate,
+  TEMPLATE_DEMO_NOTICE,
+} from "@/lib/data/templates-generate";
 import {
-  buildAutoFilledData,
-  renderDocxTemplate,
-} from "@/lib/data/templates-render";
-import { DOCUMENTS_BUCKET } from "@/lib/data/documents-read";
+  canGenerateFromTemplates,
+  TEMPLATE_ROLE_DENIED,
+} from "@/lib/data/templates-permissions";
 
 export interface ActionState {
   ok?: boolean;
@@ -34,8 +30,7 @@ export interface ActionState {
   documentId?: string;
 }
 
-const DEMO_NOTICE =
-  "Modo demonstração: configure o Supabase e o bucket document_templates para usar a automação documental.";
+const DEMO_NOTICE = TEMPLATE_DEMO_NOTICE;
 
 async function audit(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -219,7 +214,7 @@ export async function deleteTemplateAction(
 }
 
 // ---------------------------------------------------------------------------
-// Gerar documento (qualquer equipe)
+// Gerar documento (Advogado(a) e Admin)
 // ---------------------------------------------------------------------------
 export async function generateDocumentAction(
   _prev: ActionState,
@@ -230,116 +225,30 @@ export async function generateDocumentAction(
   if (!templateId || !leadId) return { error: "Dados incompletos." };
   const writer = await requireWriterAction();
   if (!writer.ok) return { error: writer.error };
+  // Só Advogado(a) e Admin geram documentos de modelo.
+  if (!canGenerateFromTemplates(writer.user.role)) return { error: TEMPLATE_ROLE_DENIED };
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
-  // O id do lead vira parte do caminho do arquivo: só aceita UUID.
-  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(leadId)) {
-    return { error: "Lead inválido." };
-  }
-
-  const supabase = await createClient();
-  const user = await getCurrentUser();
-
-  const template = await getTemplate(templateId);
-  if (!template) return { error: "Template não encontrado." };
-  if (!template.active) return { error: "Template está inativo." };
-
-  // Lead + cliente vinculado (se houver).
-  const { data: lead } = await supabase
-    .from("leads")
-    .select("*")
-    .eq("id", leadId)
-    .maybeSingle();
-  if (!lead) return { error: "Lead não encontrado." };
-
-  const { data: client } = await supabase
-    .from("clients")
-    .select("full_name, email, phone, city, state")
-    .eq("lead_id", leadId)
-    .maybeSingle();
-
-  const { data: firstCase } = await supabase
-    .from("cases")
-    .select("title")
-    .eq("lead_id", leadId)
-    .limit(1)
-    .maybeSingle();
-
-  const settings = await getSettings();
-
-  const autoData = buildAutoFilledData({
-    lead,
-    client,
-    caseTitle: firstCase?.title ?? null,
-    office: { name: settings.office_name, data: settings.office },
-    legalAreaLabel: lead?.legal_area
-      ? LEGAL_AREA_LABELS[lead.legal_area as keyof typeof LEGAL_AREA_LABELS]
-      : undefined,
-  });
 
   // Sobrescreve com valores fornecidos pelo usuário (override_<placeholder>).
+  const overrides: Record<string, string> = {};
   for (const [k, v] of formData.entries()) {
     if (k.startsWith("override_") && typeof v === "string" && v.trim()) {
-      autoData[k.replace(/^override_/, "")] = v;
+      overrides[k.replace(/^override_/, "")] = v;
     }
   }
 
-  const tplBuffer = await downloadTemplateFile(template.storage_path);
-  if (!tplBuffer) return { error: "Falha ao baixar o template." };
-
-  let rendered: Buffer;
-  try {
-    rendered = await renderDocxTemplate(tplBuffer, autoData);
-  } catch (err) {
-    console.error("[templates] render error:", err);
-    return {
-      error:
-        "Falha ao renderizar o documento. Verifique se os placeholders do template estão íntegros.",
-    };
-  }
-
-  const fileName = `${template.name.replace(/[^\w.\-]+/g, "_")}_${Date.now()}.docx`;
-  const storagePath = `leads/${leadId}/${fileName}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from(DOCUMENTS_BUCKET)
-    .upload(storagePath, rendered, {
-      upsert: false,
-      contentType: DOCX_MIME,
-    });
-  if (uploadError) return { error: "Falha ao salvar o documento gerado." };
-
-  const { data: doc, error: insertError } = await supabase
-    .from("documents")
-    .insert({
-      lead_id: leadId,
-      file_name: fileName,
-      file_type: DOCX_MIME,
-      file_size: rendered.length,
-      storage_path: storagePath,
-      category: template.category,
-      uploaded_by: user.id.startsWith("demo") ? null : user.id,
-      review_status: "pendente",
-    })
-    .select("id")
-    .single();
-
-  if (insertError) {
-    await supabase.storage.from(DOCUMENTS_BUCKET).remove([storagePath]);
-    return { error: "Falha ao registrar o documento." };
-  }
-
-  // Link de download imediato (60s).
-  const { data: signed } = await supabase.storage
-    .from(DOCUMENTS_BUCKET)
-    .createSignedUrl(storagePath, 60);
-
-  await audit(supabase, "generate_doc", "document", doc.id, user.id);
-  revalidatePath(`/leads/${leadId}`);
-  revalidatePath("/documentos");
+  const result = await generateDocumentFromTemplate({
+    templateId,
+    leadId,
+    overrides,
+    user: { id: writer.user.id, role: writer.user.role },
+    channel: "painel",
+  });
+  if (!result.ok) return { error: result.error };
 
   return {
     ok: true,
-    url: signed?.signedUrl,
-    documentId: doc.id,
+    url: result.url,
+    documentId: result.documentId,
   };
 }

@@ -3,12 +3,6 @@
  * Modelos e preços ficam aqui para mudar num lugar só.
  */
 
-/** Modelo do dia a dia: rápido e barato, escolhe a consulta certa e resume. */
-export const ASSISTANT_MODEL = process.env.ASSISTANT_MODEL || "claude-haiku-5-5";
-
-/** Modelo que lê PDFs e prints (fase 2): mais preciso em números CNJ, datas e nomes. */
-export const ASSISTANT_DOC_MODEL = process.env.ASSISTANT_DOC_MODEL || "claude-sonnet-5-5";
-
 /** Teto de tokens de saída por chamada (resposta + raciocínio). */
 export const ASSISTANT_MAX_TOKENS = 4096;
 
@@ -49,6 +43,49 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   // Claude Sonnet 5.5 — usado na leitura de documentos (fase 2).
   "claude-sonnet-5-5": { input: 2, output: 10, cacheWrite: 2.5, cacheRead: 0.1 },
 };
+
+/** Modelos padrão de cada nível. O assistente só usa estes dois. */
+export const DEFAULT_ASSISTANT_MODEL = "claude-haiku-5-5";
+export const DEFAULT_ASSISTANT_DOC_MODEL = "claude-sonnet-5-5";
+
+/** Modelos permitidos: só os que têm preço cadastrado (Haiku e Sonnet). */
+export function isAllowedModel(model: string | null | undefined): model is string {
+  return typeof model === "string" && Object.prototype.hasOwnProperty.call(MODEL_PRICING, model);
+}
+
+const warned = new Set<string>();
+
+/**
+ * Lê o modelo de uma variável de ambiente. Valor fora da lista é ignorado
+ * (volta ao padrão, com aviso no log uma vez por valor).
+ */
+export function pickAllowedModel(value: string | null | undefined, fallback: string, envName: string): string {
+  const v = value?.trim();
+  if (!v) return fallback;
+  if (isAllowedModel(v)) return v;
+  const key = `${envName}=${v}`;
+  if (!warned.has(key)) {
+    warned.add(key);
+    console.warn(
+      `[assistente] ${envName}="${v}" não é um modelo permitido (${Object.keys(MODEL_PRICING).join(", ")}). Usando ${fallback}.`
+    );
+  }
+  return fallback;
+}
+
+/** Modelo do dia a dia: rápido e barato, escolhe a consulta certa e resume. */
+export const ASSISTANT_MODEL = pickAllowedModel(
+  process.env.ASSISTANT_MODEL,
+  DEFAULT_ASSISTANT_MODEL,
+  "ASSISTANT_MODEL"
+);
+
+/** Modelo detalhado: lê PDFs e prints (fase 2) e recebe as perguntas escaladas pelo Haiku. */
+export const ASSISTANT_DOC_MODEL = pickAllowedModel(
+  process.env.ASSISTANT_DOC_MODEL,
+  DEFAULT_ASSISTANT_DOC_MODEL,
+  "ASSISTANT_DOC_MODEL"
+);
 
 export function isAssistantConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY);

@@ -39,6 +39,7 @@ export const CATEGORY_LABELS: Record<DocumentCategory, string> = {
   decisao: "Decisão",
   procuracao: "Procuração",
   honorarios: "Honorários",
+  minuta: "Minuta",
   outros: "Outros",
 };
 

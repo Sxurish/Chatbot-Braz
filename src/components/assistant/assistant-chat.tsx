@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/assistant/markdown";
 import { DraftCard } from "@/components/assistant/draft-card";
+import { MinutaCard } from "@/components/assistant/minuta-card";
 import type { useAssistant } from "@/components/assistant/use-assistant";
 import { ACCEPT_ATTRIBUTE, checkAttachment } from "@/lib/assistant/attachment-rules";
 
@@ -45,7 +46,7 @@ export function AssistantChat({
   pagePath: string | null;
   variant: "panel" | "page";
 }) {
-  const { turns, busy, toolLabel, status, statusError, budgetNotice, send, stop, updateDraft } = api;
+  const { turns, busy, toolLabel, status, statusError, budgetNotice, send, stop, updateDraft, updateMinuta } = api;
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -187,6 +188,12 @@ export function AssistantChat({
                       t.error ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"
                     )}
                   >
+                    {t.detailed && (
+                      <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                        <Sparkles className="h-3 w-3 text-brand-gold" />
+                        Resposta detalhada (Sonnet)
+                      </p>
+                    )}
                     {t.content ? (
                       <Markdown text={t.content} />
                     ) : (
@@ -208,6 +215,9 @@ export function AssistantChat({
                         readOnly={status?.canWrite === false}
                         onChange={(change) => updateDraft(d.id, change)}
                       />
+                    ))}
+                    {t.minutas?.map((m) => (
+                      <MinutaCard key={m.id} minuta={m} onChange={(change) => updateMinuta(m.id, change)} />
                     ))}
                   </div>
                 </div>

@@ -170,3 +170,13 @@ No modo normal o navegador pede ao servidor uma URL assinada e envia o arquivo
 direto ao Storage do Supabase (não passa pelo limite de 4,5 MB das funções da
 Vercel). O servidor baixa o arquivo, confere o tipo pelos primeiros bytes e
 manda ao modelo como PDF ou imagem.
+
+## Documentos e escolha do modelo (2026-11-20)
+
+Rode antes `supabase/assistente-documentos.sql` no SQL Editor (uma vez; pode repetir).
+
+**Troca automática Haiku/Sonnet.** Só esses dois modelos são aceitos: qualquer outro valor em `ASSISTANT_MODEL` ou `ASSISTANT_DOC_MODEL` é ignorado. O Haiku começa toda pergunta (com arquivo anexado, o Sonnet já começa). O Haiku pode pedir uma vez a ferramenta interna `pedir_analise_detalhada` (muitos andamentos, comparação de processos, pergunta jurídica complexa, dúvida); aí a pergunta é refeita pelo Sonnet e a mensagem mostra "Resposta detalhada (Sonnet)". Ele não escala depois de preparar um rascunho, e entre 100% e 150% do limite do mês a análise detalhada fica pausada. Configurações mostra o gasto separado por modelo. Regras em `src/lib/assistant/model-router.ts` e na seção "Escolha do modelo" de `prompt.ts`.
+
+**Modelos .docx pelo chat.** "Gera a procuração do João": `listar_modelos` + `preparar_modelo` montam um cartão com os campos automáticos e os manuais; só depois de Confirmar o .docx é gerado e salvo na ficha do lead como pendente de revisão. Só Admin e Advogado(a) geram (inclusive pelo botão "Gerar documento" da ficha). Pelo WhatsApp, contratos não são gerados e o link enviado abre a ficha no CRM, com login.
+
+**Minutas pela IA.** "Faz uma minuta de manifestação sobre a intimação do processo X": `redigir_minuta` junta os dados do CRM e o Sonnet redige. Tipos: manifestação ou petição simples, notificação extrajudicial, e-mail ou carta ao cliente, resumo do caso. O cartão tem editor, tela cheia, "Baixar .docx" e "Salvar em Documentos" (categoria minuta, pendente de revisão). A IA nunca inventa jurisprudência, artigo ou fato: o que precisa ser checado vem como [CONFERIR] e o que falta como [PREENCHER]. Só Admin e Advogado(a), só no CRM (não no WhatsApp). Código em `src/lib/minutas/`.

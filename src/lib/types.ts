@@ -87,6 +87,7 @@ export type DocumentCategory =
   | "decisao"
   | "procuracao"
   | "honorarios"
+  | "minuta"
   | "outros";
 
 export interface Lead {

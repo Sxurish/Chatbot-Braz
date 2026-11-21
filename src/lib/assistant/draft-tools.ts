@@ -6,6 +6,9 @@ import {
   DRAFT_KINDS,
   formatCnj,
   linkLabelKey,
+  MODELO_AUTO_PREFIX,
+  MODELO_CATEGORY_KEY,
+  MODELO_FIELD_PREFIX,
   type DraftData,
   type DraftDuplicate,
   type DraftKind,
@@ -25,6 +28,14 @@ import { listAppointments } from "@/lib/data/crm";
 import { listCases, listClients, listProcesses } from "@/lib/data/fase6";
 import { listLeads, listTeam } from "@/lib/data/leads";
 import { listMovements } from "@/lib/data/movements";
+import { getTemplate } from "@/lib/data/templates-read";
+import { loadTemplatePreview, type TemplatePreview } from "@/lib/data/templates-generate";
+import {
+  canGenerateFromTemplates,
+  checkTemplateGeneration,
+  TEMPLATE_ROLE_DENIED,
+} from "@/lib/data/templates-permissions";
+import { TEMPLATE_CATEGORY_LABELS } from "@/lib/data/templates-types";
 
 /**
  * Ferramentas de RASCUNHO do assistente (fase 2; andamento na fase 3). Nenhuma grava no CRM:
@@ -38,6 +49,7 @@ const ENTITY_HINT: Record<LinkEntity, string> = {
   client: "id do cliente, obtido com buscar_clientes",
   process: "id do processo, obtido com buscar_processos",
   user: "id da pessoa da equipe, obtido com listar_equipe",
+  template: "id do modelo, obtido com listar_modelos",
 };
 
 function fieldSchema(f: FieldDef): z.ZodType {
@@ -110,6 +122,10 @@ async function resolveLink(entity: LinkEntity, id: string): Promise<string | nul
     case "user": {
       const u = (await listTeam()).find((x) => x.id === id && x.active);
       return u ? u.name : null;
+    }
+    case "template": {
+      const t = await getTemplate(id);
+      return t && t.active ? t.name : null;
     }
   }
 }
@@ -241,7 +257,61 @@ const DESCRIPTIONS: Record<DraftKind, string> = {
     "Prepara o RASCUNHO para anexar o arquivo enviado nesta mensagem a um processo, caso, lead ou cliente. Só funciona quando a pessoa anexou um arquivo. Não grava.",
   andamento:
     "Prepara o RASCUNHO de um andamento lançado pela equipe num processo já cadastrado (ex.: 'registra que protocolamos a réplica hoje', ou o que uma intimação anexada informa). Não grava. Antes, ache o processo com buscar_processos ou andamentos_do_processo e use o id dele. occurred_at é a data em que o fato aconteceu (AAAA-MM-DD, ou AAAA-MM-DDTHH:mm se souber a hora); 'hoje' é a data de hoje. Descreva o fato de forma curta e objetiva, sem inventar. Avisa se já houver andamento igual no mesmo dia.",
+  modelo:
+    "Prepara o RASCUNHO de um documento gerado a partir de um modelo .docx da tela Templates (procuração, declaração, contrato etc.). Não gera nada: a pessoa confere os campos e confirma. Antes, ache o modelo com listar_modelos (template_id) e a pessoa com buscar_leads (lead_id). Se a pessoa citar um cliente, use buscar_clientes e passe o client_id (o sistema usa o lead vinculado ao cliente). Em campos, mande só os campos manuais do modelo (os que listar_modelos marca como automatico=false), com os valores que a pessoa informou ou que vieram do CRM; nunca invente. Campos sem valor ficam vazios e aparecem para conferir. Só Advogado(a) e Admin geram documentos de modelo.",
 };
+
+/** Grava o rascunho, avisa a interface e monta a resposta para a IA. */
+async function saveDraftAndReply(
+  kind: DraftKind,
+  ctx: ToolContext,
+  input: {
+    data: DraftData;
+    uncertain: string[];
+    duplicates: DraftDuplicate[];
+    attachment: { id: string; name: string } | null;
+  },
+  extra: Record<string, unknown> = {}
+) {
+  let draft;
+  try {
+    draft = await createDraft(ctx.user.id, {
+      conversationId: ctx.conversationId ?? null,
+      kind,
+      data: input.data,
+      uncertain: input.uncertain,
+      duplicates: input.duplicates,
+      attachment: input.attachment,
+    });
+  } catch (err) {
+    if (err instanceof AssistantSetupError) {
+      return {
+        erro: "O banco ainda não está pronto para cadastros pelo assistente (falta rodar supabase/assistente-fase2.sql). Avise o administrador e indique a tela do CRM para cadastrar.",
+      };
+    }
+    // Banco sem o tipo novo na regra assistant_drafts_kind_check.
+    if (err instanceof Error && /assistant_drafts_kind_check/.test(err.message)) {
+      return {
+        erro: "O banco ainda não aceita este tipo de rascunho (falta atualizar a regra assistant_drafts_kind_check). Avise o administrador e indique a tela do CRM para fazer manualmente.",
+      };
+    }
+    throw err;
+  }
+  ctx.emit?.({ type: "draft", draft });
+  return {
+    rascunho_id: draft.id,
+    tipo: DRAFT_DEFS[kind].title,
+    situacao:
+      ctx.channel === "whatsapp"
+        ? "aguardando a pessoa responder OK no WhatsApp (o resumo do rascunho é enviado automaticamente no fim da sua resposta)"
+        : "aguardando a pessoa conferir e clicar em Confirmar no cartão",
+    dados: input.data,
+    incertos: input.uncertain,
+    duplicados: input.duplicates,
+    ...extra,
+    aviso: "Nada foi gravado ainda. Não diga que cadastrou.",
+  };
+}
 
 function makeDraftTool(kind: DraftKind): AssistantTool {
   return defineTool({
@@ -259,39 +329,129 @@ function makeDraftTool(kind: DraftKind): AssistantTool {
       }
       const { data, uncertain } = await normalizeDraftInput(kind, input, attachment);
       const duplicates = await findDuplicates(kind, data);
-      let draft;
-      try {
-        draft = await createDraft(ctx.user.id, {
-          conversationId: ctx.conversationId ?? null,
-          kind,
-          data,
-          uncertain,
-          duplicates,
-          attachment,
-        });
-      } catch (err) {
-        if (err instanceof AssistantSetupError) {
-          return {
-            erro: "O banco ainda não está pronto para cadastros pelo assistente (falta rodar supabase/assistente-fase2.sql). Avise o administrador e indique a tela do CRM para cadastrar.",
-          };
-        }
-        throw err;
-      }
-      ctx.emit?.({ type: "draft", draft });
-      return {
-        rascunho_id: draft.id,
-        tipo: DRAFT_DEFS[kind].title,
-        situacao:
-          ctx.channel === "whatsapp"
-            ? "aguardando a pessoa responder OK no WhatsApp (o resumo do rascunho é enviado automaticamente no fim da sua resposta)"
-            : "aguardando a pessoa conferir e clicar em Confirmar no cartão",
-        dados: data,
-        incertos: uncertain,
-        duplicados: duplicates,
-        aviso: "Nada foi gravado ainda. Não diga que cadastrou.",
-      };
+      return saveDraftAndReply(kind, ctx, { data, uncertain, duplicates, attachment });
     },
   });
 }
 
-export const DRAFT_TOOLS: AssistantTool[] = DRAFT_KINDS.map(makeDraftTool);
+// ---------------------------------------------------------------------------
+// Rascunho "modelo": documento gerado de um template .docx
+// ---------------------------------------------------------------------------
+
+/**
+ * Monta os dados do rascunho de modelo: o modelo, o lead, a prévia dos
+ * campos automáticos e os campos manuais (vazios viram incertos).
+ */
+export function buildModeloDraftData(
+  preview: Pick<TemplatePreview, "template" | "lead" | "autoData" | "manualFields">,
+  campos: Record<string, unknown> = {},
+  incertos: unknown[] = []
+): { data: DraftData; uncertain: string[]; ignored: string[] } {
+  const { template, lead, autoData, manualFields } = preview;
+  const data: DraftData = {
+    template_id: template.id,
+    [linkLabelKey("template_id")]: template.name,
+    lead_id: lead.id,
+    [linkLabelKey("lead_id")]: lead.full_name,
+    [MODELO_CATEGORY_KEY]: TEMPLATE_CATEGORY_LABELS[template.category] ?? template.category,
+  };
+  const uncertain = new Set<string>();
+  const flagged = new Set(
+    incertos
+      .filter((k): k is string => typeof k === "string")
+      .map((k) => (k.startsWith(MODELO_FIELD_PREFIX) ? k.slice(MODELO_FIELD_PREFIX.length) : k))
+  );
+
+  const manual = new Set(manualFields);
+  for (const key of (template.placeholders ?? []).filter((p) => !manual.has(p)).sort()) {
+    const value = autoData[key] ?? "";
+    data[`${MODELO_AUTO_PREFIX}${key}`] = value;
+    if (!value.trim()) uncertain.add(`${MODELO_AUTO_PREFIX}${key}`);
+  }
+  for (const key of manualFields) {
+    const raw = campos[key] ?? campos[`${MODELO_FIELD_PREFIX}${key}`];
+    const value = typeof raw === "string" ? raw.trim().slice(0, 4000) : "";
+    data[`${MODELO_FIELD_PREFIX}${key}`] = value;
+    if (!value || flagged.has(key)) uncertain.add(`${MODELO_FIELD_PREFIX}${key}`);
+  }
+  const ignored = Object.keys(campos)
+    .map((k) => (k.startsWith(MODELO_FIELD_PREFIX) ? k.slice(MODELO_FIELD_PREFIX.length) : k))
+    .filter((k) => !manual.has(k));
+  return { data, uncertain: [...uncertain], ignored };
+}
+
+/** Lead vinculado ao cliente (o modelo é gerado na ficha do lead). */
+async function leadOfClient(clientId: string): Promise<string | null> {
+  const c = (await listClients()).find((x) => x.id === clientId);
+  return c?.lead_id ?? null;
+}
+
+export const prepararModelo = defineTool({
+  name: "preparar_modelo",
+  label: "Preparando o documento do modelo",
+  description: DESCRIPTIONS.modelo,
+  writeOnly: true,
+  schema: z.object({
+    template_id: z.string().min(1).max(64).describe("Id do modelo, obtido com listar_modelos. Nunca invente."),
+    lead_id: z
+      .string()
+      .max(64)
+      .optional()
+      .describe("Id do lead, obtido com buscar_leads. Se a pessoa citou um cliente, use client_id."),
+    client_id: z
+      .string()
+      .max(64)
+      .optional()
+      .describe("Id do cliente, obtido com buscar_clientes (o sistema usa o lead vinculado a ele)."),
+    campos: z
+      .record(z.string().max(80), z.string().max(4000))
+      .optional()
+      .describe("Valores dos campos MANUAIS do modelo: chave = nome do campo, como em listar_modelos."),
+    incertos: z
+      .array(z.string().max(90))
+      .max(40)
+      .default([])
+      .describe("Campos manuais em que você não tem certeza (aparecem em amarelo para conferir)."),
+  }),
+  async run(input, ctx) {
+    // Permissão conferida no servidor (de novo no Confirmar e na geração).
+    if (!canGenerateFromTemplates(ctx.user.role)) return { erro: TEMPLATE_ROLE_DENIED };
+
+    let leadId = input.lead_id?.trim() || "";
+    if (!leadId && input.client_id) {
+      leadId = (await leadOfClient(input.client_id.trim())) ?? "";
+      if (!leadId) {
+        return {
+          erro: "Este cliente não tem lead vinculado. O documento de modelo é gerado na ficha do lead: procure o lead com buscar_leads.",
+        };
+      }
+    }
+    if (!leadId) return { erro: "Informe para quem é o documento: ache o lead com buscar_leads ou o cliente com buscar_clientes." };
+
+    const loaded = await loadTemplatePreview(input.template_id.trim(), leadId);
+    if (!loaded.ok) {
+      return {
+        erro: `${loaded.error} Confira com listar_modelos e buscar_leads. Se não houver modelo adequado, aponte a tela [Templates](/templates).`,
+      };
+    }
+    const allowed = checkTemplateGeneration(ctx.user.role, loaded.preview.template, ctx.channel ?? "painel");
+    if (!allowed.ok) return { erro: allowed.error };
+
+    const { data, uncertain, ignored } = buildModeloDraftData(
+      loaded.preview,
+      input.campos ?? {},
+      input.incertos ?? []
+    );
+    return saveDraftAndReply(
+      "modelo",
+      ctx,
+      { data, uncertain, duplicates: [], attachment: null },
+      ignored.length > 0 ? { campos_ignorados: ignored } : {}
+    );
+  },
+});
+
+export const DRAFT_TOOLS: AssistantTool[] = [
+  ...DRAFT_KINDS.filter((k) => k !== "modelo").map(makeDraftTool),
+  prepararModelo,
+];

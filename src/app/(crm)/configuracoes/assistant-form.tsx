@@ -47,6 +47,7 @@ export function AssistantForm({
   settings,
   apiKeyConfigured,
   monthSpendUsd,
+  monthSpendByModel = null,
   setupMissing,
   readOnly,
 }: {
@@ -54,6 +55,8 @@ export function AssistantForm({
   apiKeyConfigured: boolean;
   /** Gasto do mês (só enviado para Admin). */
   monthSpendUsd: number | null;
+  /** Gasto do mês por modelo; null quando o SQL ainda não foi rodado. */
+  monthSpendByModel?: { haiku: number; sonnet: number } | null;
   setupMissing: boolean;
   readOnly: boolean;
 }) {
@@ -109,6 +112,12 @@ export function AssistantForm({
                   style={{ width: `${pct}%` }}
                 />
               </div>
+              {monthSpendByModel && (
+                <p className="mt-1.5 text-xs text-slate-500">
+                  Haiku (consultas): US$ {monthSpendByModel.haiku.toFixed(2)} · Sonnet (documentos e
+                  análises detalhadas): US$ {monthSpendByModel.sonnet.toFixed(2)}
+                </p>
+              )}
             </div>
           )}
 

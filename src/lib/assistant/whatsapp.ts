@@ -1,10 +1,11 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { buildHistory, runAgent, type MessagesClientLike } from "@/lib/assistant/agent";
-import { ASSISTANT_HISTORY_LIMIT, ASSISTANT_MODEL, isAssistantConfigured } from "@/lib/assistant/config";
+import { buildHistory, runRoutedAgent, type MessagesClientLike } from "@/lib/assistant/agent";
+import { ASSISTANT_HISTORY_LIMIT, isAssistantConfigured } from "@/lib/assistant/config";
+import { chooseInitialTier } from "@/lib/assistant/model-router";
 import { canWrite, confirmDraft, rejectDraft } from "@/lib/assistant/confirm-draft";
-import { computeCostUsd, getBudgetStatus } from "@/lib/assistant/cost";
+import { getBudgetStatus } from "@/lib/assistant/cost";
 import { DRAFT_DEFS, type DraftView } from "@/lib/assistant/draft-schema";
 import { DRAFT_TOOLS } from "@/lib/assistant/draft-tools";
 import { listDrafts } from "@/lib/assistant/drafts";
@@ -31,6 +32,7 @@ import {
 import { sendText } from "@/lib/channels/whatsapp";
 import type { InboundMessage } from "@/lib/channels/types";
 import { getSettings } from "@/lib/data/settings";
+import { canGenerateFromTemplates } from "@/lib/data/templates-permissions";
 import { digestToWhatsappText, type DailyDigest } from "@/lib/digest/build";
 import {
   dbIntimacaoStore,
@@ -130,12 +132,21 @@ export async function findTeamMemberByPhone(
  * Ferramentas oferecidas pelo WhatsApp: as consultas sem NENHUMA financeira
  * (nem para Admin) e, para quem não é Visualizador, os rascunhos (menos
  * "anexar documento", porque arquivo não chega pelo WhatsApp nesta fase).
+ * Documento de modelo (preparar_modelo) só para Advogado(a) e Admin, e sem
+ * contratos (a ferramenta e o OK recusam contrato e honorários no WhatsApp).
  */
 export function getWhatsappTools(user: Pick<TeamUser, "role">): AssistantTool[] {
   const consult = getToolsFor(false).filter((t) => !t.adminOnly);
   const drafts =
-    user.role === "visualizador" ? [] : DRAFT_TOOLS.filter((t) => t.name !== "preparar_documento");
-  return [...consult, ...drafts];
+    user.role === "visualizador"
+      ? []
+      : DRAFT_TOOLS.filter(
+          (t) =>
+            t.name !== "preparar_documento" &&
+            (t.name !== "preparar_modelo" || canGenerateFromTemplates(user.role))
+        );
+  // Minutas (redigir_minuta) só no CRM: nunca entram aqui.
+  return [...consult, ...drafts].filter((t) => t.name !== "redigir_minuta");
 }
 
 // ---------------------------------------------------------------------------
@@ -253,10 +264,12 @@ async function confirmPending(session: AssistantSession, pending: DraftView[]): 
   let okCount = 0;
   for (const d of pending) {
     const title = DRAFT_DEFS[d.kind].title;
-    const r = await confirmDraft(session, d.id, d.data);
+    const r = await confirmDraft(session, d.id, d.data, { channel: "whatsapp" });
     if (r.ok) {
       okCount++;
-      lines.push(`• ${r.message} ${absolute(r.link)}`);
+      // Documento de modelo: só o link do CRM (exige login), nunca o de download.
+      const login = d.kind === "modelo" ? " (abre com login no CRM)" : "";
+      lines.push(`• ${r.message} ${absolute(r.link)}${login}`);
     } else {
       lines.push(`• ${title}: não gravei. ${r.error}`);
     }
@@ -487,15 +500,23 @@ export async function handleTeamWhatsapp(
       await saveMessage(member.id, conversationId, { role: "user", content: text });
       const messages = buildHistory(withNotes(history, drafts), text);
       const created: DraftView[] = [];
-      const result = await runAgent({
+      const tools = getWhatsappTools(member);
+      // Mesma regra do painel: Haiku começa e pode passar uma vez ao Sonnet
+      // (sem arquivo no WhatsApp, então nunca começa no Sonnet).
+      const result = await runRoutedAgent({
         client,
-        model: ASSISTANT_MODEL,
-        system: [
+        initialTier: chooseInitialTier({ hasAttachment: false }),
+        detailedAllowed: budget.allowDocuments,
+        buildSystem: ({ canEscalate }) => [
           // Acesso financeiro "não" para todos: no WhatsApp ninguém recebe financeiro.
-          ...buildSystemPrompt(member, false, now, { canWrite: writer }),
+          ...buildSystemPrompt(member, false, now, {
+            canWrite: writer,
+            canEscalate,
+            toolNames: tools.map((t) => t.name),
+          }),
           { type: "text", text: WHATSAPP_INSTRUCTIONS },
         ],
-        tools: getWhatsappTools(member),
+        tools,
         messages,
         ctx: {
           user: member,
@@ -523,9 +544,9 @@ export async function handleTeamWhatsapp(
         role: "assistant",
         content: result.text,
         toolsUsed: result.toolsUsed,
-        model: ASSISTANT_MODEL,
+        model: result.model,
         usage: result.usage,
-        costUsd: computeCostUsd(ASSISTANT_MODEL, result.usage),
+        costUsd: result.costUsd,
       });
 
       let footer = buildDraftFooter(created, base);

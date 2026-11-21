@@ -42,6 +42,25 @@ export function computeCostUsd(model: string, usage: UsageTotals): number {
   return Math.round(cost * 1_000_000) / 1_000_000;
 }
 
+/** Tokens de cada modelo usado numa pergunta (Haiku e Sonnet podem somar no mesmo turno). */
+export type UsageByModel = Record<string, UsageTotals>;
+
+export function sumUsageTotals(a: UsageTotals, b: UsageTotals): UsageTotals {
+  return {
+    input: a.input + b.input,
+    output: a.output + b.output,
+    cacheWrite: a.cacheWrite + b.cacheWrite,
+    cacheRead: a.cacheRead + b.cacheRead,
+  };
+}
+
+/** Custo de uma pergunta: cada parte com o preço do modelo que realmente a fez. */
+export function computeTurnCostUsd(byModel: UsageByModel): number {
+  let total = 0;
+  for (const [model, usage] of Object.entries(byModel)) total += computeCostUsd(model, usage);
+  return Math.round(total * 1_000_000) / 1_000_000;
+}
+
 export type BudgetLevel = "ok" | "warning" | "over" | "blocked";
 
 export interface BudgetStatus {

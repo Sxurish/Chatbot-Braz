@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { DraftView } from "@/lib/assistant/draft-schema";
+import type { MinutaView } from "@/lib/minutas/types";
 import { uploadAttachment, type UploadMode } from "@/components/assistant/upload";
 
 export interface ChatTurn {
@@ -14,6 +15,10 @@ export interface ChatTurn {
   attachments?: { id: string; name: string }[];
   /** Rascunhos de cadastro preparados nesta resposta (cartões de confirmação). */
   drafts?: DraftView[];
+  /** Resposta dada pelo modelo detalhado (Sonnet): mostra a etiqueta na mensagem. */
+  detailed?: boolean;
+  /** Minutas redigidas pela IA nesta resposta (cartão "Minuta"). */
+  minutas?: MinutaView[];
 }
 
 export interface AssistantStatus {
@@ -57,6 +62,7 @@ type LoadedMessage = {
   content: string;
   attachments?: { id: string; name: string }[];
   tools_used?: { draftId?: string }[];
+  tier?: "rapido" | "detalhado";
 };
 
 /** Busca as mensagens de uma conversa (com os cartões); null se não existe ou não é desta pessoa. */
@@ -64,16 +70,22 @@ async function fetchTurns(id: string): Promise<ChatTurn[] | null> {
   try {
     const res = await fetch(`/api/assistente/conversas/${encodeURIComponent(id)}`, { cache: "no-store" });
     if (!res.ok) return res.status === 404 ? null : [];
-    const data = (await res.json()) as { messages: LoadedMessage[]; drafts?: DraftView[] };
+    const data = (await res.json()) as { messages: LoadedMessage[]; drafts?: DraftView[]; minutas?: MinutaView[] };
     const drafts = new Map((data.drafts ?? []).map((d) => [d.id, d]));
+    // A ferramenta de minuta devolve o id no mesmo campo dos rascunhos.
+    const minutas = new Map((data.minutas ?? []).map((m) => [m.id, m]));
     return data.messages.map((m) => ({
       id: m.id,
       role: m.role,
       content: m.content,
       attachments: m.attachments?.length ? m.attachments : undefined,
+      detailed: m.tier === "detalhado" || undefined,
       drafts: (m.tools_used ?? [])
         .map((t) => (t.draftId ? drafts.get(t.draftId) : undefined))
         .filter((d): d is DraftView => Boolean(d)),
+      minutas: (m.tools_used ?? [])
+        .map((t) => (t.draftId ? minutas.get(t.draftId) : undefined))
+        .filter((x): x is MinutaView => Boolean(x)),
     }));
   } catch {
     return [];
@@ -244,11 +256,25 @@ export function useAssistant(pagePath: string | null) {
                 setToolLabel(null);
                 patch((t) => ({ ...t, content: t.content + String(event.delta ?? "") }));
                 break;
+              case "model": {
+                const detailed = event.tier === "detalhado";
+                if (event.escalated) {
+                  // O Haiku passou a pergunta ao Sonnet: a resposta recomeça do zero.
+                  setToolLabel("Preparando a resposta detalhada");
+                  patch((t) => ({ ...t, content: "", detailed }));
+                } else {
+                  patch((t) => ({ ...t, detailed }));
+                }
+                break;
+              }
               case "tool":
                 setToolLabel(String(event.label ?? "Consultando o CRM"));
                 break;
               case "draft":
                 patch((t) => ({ ...t, drafts: [...(t.drafts ?? []), event.draft as DraftView] }));
+                break;
+              case "minuta":
+                patch((t) => ({ ...t, minutas: [...(t.minutas ?? []), event.minuta as MinutaView] }));
                 break;
               case "error":
                 patch((t) => ({
@@ -289,6 +315,17 @@ export function useAssistant(pagePath: string | null) {
     );
   }, []);
 
+  /** Atualiza um cartão de minuta (texto editado, salva em Documentos). */
+  const updateMinuta = useCallback((minutaId: string, change: Partial<MinutaView>) => {
+    setTurns((prev) =>
+      prev.map((t) =>
+        t.minutas?.some((m) => m.id === minutaId)
+          ? { ...t, minutas: t.minutas.map((m) => (m.id === minutaId ? { ...m, ...change } : m)) }
+          : t
+      )
+    );
+  }, []);
+
   return {
     turns,
     conversationId,
@@ -300,6 +337,7 @@ export function useAssistant(pagePath: string | null) {
     send,
     stop,
     updateDraft,
+    updateMinuta,
     refreshStatus,
     selectConversation,
     newConversation: () => selectConversation(null),
