@@ -116,6 +116,33 @@ export async function getMonthSpendUsd(): Promise<number> {
   return Number(data ?? 0) + (await intimacoes);
 }
 
+/** Gasto do mês separado entre Haiku e Sonnet (Configurações, só Admin). */
+export interface MonthSpendByModel {
+  haiku: number;
+  sonnet: number;
+}
+
+/**
+ * Divide o gasto do mês por modelo. Usa a função assistant_month_cost_by_model
+ * (supabase/assistente-documentos.sql); sem ela, devolve null e a tela mostra
+ * só o total. A leitura das intimações pela IA usa o Sonnet e entra nele.
+ * Uma pergunta que o Haiku passou para o Sonnet conta como Sonnet.
+ */
+export async function getMonthSpendByModel(): Promise<MonthSpendByModel | null> {
+  if (!isSupabaseConfigured()) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("assistant_month_cost_by_model");
+  if (error) return null;
+  const out: MonthSpendByModel = { haiku: 0, sonnet: 0 };
+  for (const row of (data ?? []) as { model: string | null; cost_usd: number | string | null }[]) {
+    const cost = Number(row.cost_usd ?? 0);
+    if ((row.model ?? "").includes("haiku")) out.haiku += cost;
+    else out.sonnet += cost;
+  }
+  out.sonnet += await getIntimacoesMonthCostUsd(supabase);
+  return out;
+}
+
 /** Início do mês corrente em São Paulo (sempre -03:00), em ISO. */
 export function monthStartIso(date = new Date()): string {
   return new Date(`${monthKey(date)}-01T00:00:00-03:00`).toISOString();

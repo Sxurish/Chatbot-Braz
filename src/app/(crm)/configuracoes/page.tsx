@@ -7,16 +7,26 @@ import { AiForm } from "./ai-form";
 import { IntegrationsStatus } from "./integrations-status";
 import { AssistantForm } from "./assistant-form";
 import { isAssistantConfigured } from "@/lib/assistant/config";
-import { AssistantSetupError, getMonthSpendUsd } from "@/lib/assistant/store";
+import {
+  AssistantSetupError,
+  getMonthSpendByModel,
+  getMonthSpendUsd,
+  type MonthSpendByModel,
+} from "@/lib/assistant/store";
 import { DigestSettings } from "./digest-settings";
 import { listDigestRecipients } from "@/lib/digest/recipients";
 import { digestTemplateConfig } from "@/lib/digest/whatsapp-template";
 
-async function readMonthSpend(): Promise<{ spent: number | null; setupMissing: boolean }> {
+async function readMonthSpend(): Promise<{
+  spent: number | null;
+  byModel: MonthSpendByModel | null;
+  setupMissing: boolean;
+}> {
   try {
-    return { spent: await getMonthSpendUsd(), setupMissing: false };
+    const [spent, byModel] = await Promise.all([getMonthSpendUsd(), getMonthSpendByModel()]);
+    return { spent, byModel, setupMissing: false };
   } catch (err) {
-    return { spent: null, setupMissing: err instanceof AssistantSetupError };
+    return { spent: null, byModel: null, setupMissing: err instanceof AssistantSetupError };
   }
 }
 
@@ -26,7 +36,9 @@ export default async function Page() {
   const [admin, settings] = await Promise.all([checkAdmin(), getSettings()]);
   const integrations = getIntegrationStatus(settings.ai_provider);
   const readOnly = !admin.ok;
-  const spend = admin.ok ? await readMonthSpend() : { spent: null, setupMissing: false };
+  const spend = admin.ok
+    ? await readMonthSpend()
+    : { spent: null, byModel: null, setupMissing: false };
   // Resumo diário: só o Admin vê quem recebe e os números (mascarados).
   const digestRecipients = admin.ok ? await listDigestRecipients() : null;
   const template = digestTemplateConfig();
@@ -59,6 +71,7 @@ export default async function Page() {
           settings={settings}
           apiKeyConfigured={isAssistantConfigured()}
           monthSpendUsd={spend.spent}
+          monthSpendByModel={spend.byModel}
           setupMissing={spend.setupMissing}
           readOnly={readOnly}
         />
