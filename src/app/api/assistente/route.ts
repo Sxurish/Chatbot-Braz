@@ -25,6 +25,7 @@ import {
   saveMessage,
 } from "@/lib/assistant/store";
 import { getToolsFor } from "@/lib/assistant/tools";
+import { canGenerateFromTemplates } from "@/lib/data/templates-permissions";
 import { friendlyApiError, withNotes } from "@/lib/assistant/turn";
 import { getSettings } from "@/lib/data/settings";
 
@@ -200,7 +201,12 @@ export async function POST(request: Request) {
   // Haiku começa; com arquivo, o Sonnet já lê. O Haiku pode escalar uma vez.
   const initialTier = chooseInitialTier({ hasAttachment: Boolean(file) });
   const writer = canWrite(session);
-  const tools = [...getToolsFor(isAdmin), ...(writer ? DRAFT_TOOLS : [])];
+  // Modelos .docx (preparar_modelo) só para Admin e Advogado(a); o servidor
+  // também recusa na ferramenta e no Confirmar.
+  const draftTools = writer
+    ? DRAFT_TOOLS.filter((t) => t.name !== "preparar_modelo" || canGenerateFromTemplates(user.role))
+    : [];
+  const tools = [...getToolsFor(isAdmin), ...draftTools];
 
   const now = new Date();
   const client = new Anthropic();
