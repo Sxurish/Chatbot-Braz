@@ -34,6 +34,11 @@ import { canGenerateFromTemplates } from "@/lib/data/templates-permissions";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { SOURCE_LABELS } from "@/lib/data/cadastros-rules";
+import { EditLeadButton } from "@/components/crm/edit-records";
+import { ConfirmDeleteButton } from "@/components/crm/record-actions";
+import { deleteLeadAction } from "@/lib/data/edicao-actions";
+import { canRemove, canWriteRole } from "@/lib/data/edicao-rules";
+import { listResponsibleOptions } from "@/lib/data/cadastros-options";
 
 export default async function LeadDetailPage(
   props: {
@@ -46,12 +51,15 @@ export default async function LeadDetailPage(
 
   // A linha do tempo de exemplo só existe no modo demonstração.
   const timeline = isSupabaseConfigured() ? [] : (mockTimeline[lead.id] ?? []);
-  const [documents, templates, names, currentUser] = await Promise.all([
+  const [documents, templates, names, currentUser, team] = await Promise.all([
     listDocumentsByLead(lead.id),
     listTemplates(true),
     getTeamNames(),
     getCurrentUser(),
+    listResponsibleOptions(),
   ]);
+  const canWrite = canWriteRole(currentUser.role, currentUser.active);
+  const canDelete = canRemove(currentUser.role, "lead", currentUser.active);
   // Só Advogado(a) e Admin geram documentos de modelo (o servidor confere de novo).
   const canGenerate = canGenerateFromTemplates(currentUser.role);
 
@@ -68,7 +76,8 @@ export default async function LeadDetailPage(
         title={lead.full_name}
         description={lead.case_type ?? "Atendimento jurídico"}
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {canWrite && <EditLeadButton lead={lead} team={team} />}
             <LeadHeaderActions leadId={lead.id} />
             {canGenerate && (
               <GenerateDocumentButton leadId={lead.id} templates={templates} />
@@ -81,6 +90,14 @@ export default async function LeadDetailPage(
             >
               <FileText className="h-4 w-4" /> Exportar resumo
             </a>
+            {canDelete && (
+              <ConfirmDeleteButton
+                fields={{ id: lead.id }}
+                action={deleteLeadAction}
+                label="Remover"
+                question="Remover este lead de vez?"
+              />
+            )}
           </div>
         }
       />

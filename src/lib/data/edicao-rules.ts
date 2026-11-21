@@ -8,7 +8,6 @@ import {
   cpfCnpjDigits,
   formatCpfCnpj,
   formatPhone,
-  isRecordId,
   isValidCnpj,
   isValidCpf,
   isValidPhone,
@@ -131,6 +130,15 @@ export function removalBlockReason(kind: "lead" | "client" | "case", links: Link
 // ---------------------------------------------------------------------------
 // Ajudantes de formulário
 // ---------------------------------------------------------------------------
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// Modo demonstração: os exemplos usam ids curtos (lead-001, task-1, u1, n3).
+const DEMO_ID_RE = /^[a-z][a-z0-9-]{0,39}$/i;
+
+/** Com o banco, só UUID; no modo demonstração, também os ids curtos dos exemplos. */
+export function isRecordId(value: string, demo: boolean): boolean {
+  return UUID_RE.test(value) || (demo && DEMO_ID_RE.test(value));
+}
+
 function get(formData: FormData, key: string): string | undefined {
   const v = formData.get(key);
   return typeof v === "string" ? v : undefined;

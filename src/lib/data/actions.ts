@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
@@ -44,12 +43,8 @@ function fail(message: string, error: { message?: string } | null): ActionState 
   return { error: message };
 }
 
-// Com o Supabase, ids são UUID; no modo demonstração os leads usam ids curtos.
+// Com o Supabase, ids são UUID.
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const leadIdField = z
-  .string()
-  .refine((v) => UUID_RE.test(v) || !isSupabaseConfigured(), "Lead inválido.")
-  .optional();
 
 // ---------------------------------------------------------------------------
 // Tarefa

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -68,11 +69,17 @@ export default async function ClientsPage(props: { searchParams: Promise<RawPara
       ) : (
         <Card className="divide-y divide-slate-100">
           {shown.map((c) => (
-            <div key={c.id} className="flex items-center justify-between p-4">
+            <Link
+              key={c.id}
+              href={`/clientes/${c.id}`}
+              className="group flex items-center justify-between p-4 transition-colors hover:bg-slate-50"
+            >
               <div className="flex items-center gap-3">
                 <Avatar fallback={getInitials(c.full_name)} />
                 <div>
-                  <p className="font-medium text-slate-900">{c.full_name}</p>
+                  <p className="font-medium text-slate-900 group-hover:text-brand-primary group-hover:underline">
+                    {c.full_name}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {c.email ?? c.phone ?? "—"}
                     {c.city ? ` • ${c.city}/${c.state}` : ""}
@@ -94,7 +101,7 @@ export default async function ClientsPage(props: { searchParams: Promise<RawPara
                   Cliente desde {formatDate(c.created_at)}
                 </span>
               </div>
-            </div>
+            </Link>
           ))}
         </Card>
       )}

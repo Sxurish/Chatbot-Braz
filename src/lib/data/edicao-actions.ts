@@ -445,9 +445,12 @@ export async function markNotificationReadAction(_prev: EditState, formData: For
 
   const supabase = await createClient();
   const query = supabase.from("notifications").update({ read });
-  const { error } = all ? await query.eq("read", false) : await query.eq("id", id!.data!);
+  // "Todas": só as que a pessoa enxerga (as gerais e as dela), como na lista.
+  const { error } = all
+    ? await query.eq("read", false).or(`user_id.is.null,user_id.eq.${user.id}`)
+    : await query.eq("id", id!.data!);
   if (error) return fail("Não foi possível atualizar a notificação.", error);
-  revalidatePath("/notificacoes");
-  revalidatePath("/dashboard");
+  // O sininho do topo aparece em todas as telas.
+  revalidatePath("/", "layout");
   return { ok: true };
 }

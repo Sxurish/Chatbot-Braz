@@ -11,6 +11,8 @@ import {
   statusMeta,
 } from "@/lib/data/conversations-types";
 import { MessageBubble } from "./message-bubble";
+import { StatusButton } from "@/components/crm/record-actions";
+import { canWriteRecords } from "@/lib/data/cadastros-options";
 
 const dateFmt = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -29,7 +31,8 @@ export default async function Page(props: Params) {
   const conversation = await getConversation(params.id);
   if (!conversation) notFound();
 
-  const messages = await listMessages(params.id);
+  const [messages, canWrite] = await Promise.all([listMessages(params.id), canWriteRecords()]);
+  const closed = conversation.status === "encerrada";
   const ch = channelMeta(conversation.channel);
   const st = statusMeta(conversation.status);
   const handoffFlagged = messages.some(
@@ -62,6 +65,14 @@ export default async function Page(props: Params) {
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={ch.tone}>{ch.label}</Badge>
             <Badge className={st.tone}>{st.label}</Badge>
+            {canWrite && (
+              <StatusButton
+                kind="conversation"
+                id={conversation.id}
+                status={closed ? "aberta" : "encerrada"}
+                label={closed ? "Reabrir conversa" : "Encerrar conversa"}
+              />
+            )}
             {conversation.lead_id && (
               <Link
                 href={`/leads/${conversation.lead_id}`}
