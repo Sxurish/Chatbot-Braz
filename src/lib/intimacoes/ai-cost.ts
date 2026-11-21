@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getMinutasMonthCostUsd } from "@/lib/minutas/cost";
 
 /**
  * Gasto do mês com a leitura das intimações pela IA (fase 5, parte B).
@@ -69,9 +70,11 @@ export async function getIntimacoesMonthCostUsd(db: AnyClient, now = new Date())
  */
 export async function getAiMonthSpendUsd(db: AnyClient, now = new Date()): Promise<number> {
   const since = saoPauloMonthStartIso(now);
-  const [assistant, intimacoes] = await Promise.all([
+  const [assistant, intimacoes, minutas] = await Promise.all([
     sumCost(db, "assistant_messages", "cost_usd", "created_at", since),
     getIntimacoesMonthCostUsd(db, now),
+    // Minutas do assistente (Sonnet) também entram no limite.
+    getMinutasMonthCostUsd(db, { serviceRole: true, now }),
   ]);
-  return assistant + intimacoes;
+  return assistant + intimacoes + minutas;
 }

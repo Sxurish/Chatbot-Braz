@@ -5,6 +5,8 @@ import { getTeamMemberContext } from "@/lib/supabase/request-context";
 import type { ToolUseRecord } from "@/lib/assistant/agent";
 import type { UsageTotals } from "@/lib/assistant/cost";
 import { getIntimacoesMonthCostUsd } from "@/lib/intimacoes/ai-cost";
+import { getMinutasMonthCostUsd } from "@/lib/minutas/cost";
+import { demoMinutasMonthCost } from "@/lib/minutas/store";
 
 /**
  * Persistência das conversas do assistente.
@@ -96,22 +98,24 @@ export async function getMonthSpendUsd(): Promise<number> {
       state.monthKey = monthKey();
       state.monthCost = 0;
     }
-    return state.monthCost;
+    return state.monthCost + demoMinutasMonthCost();
   }
   const supabase = await createClient();
-  // A leitura das intimações pela IA (fase 5) entra no mesmo limite do mês.
+  // A leitura das intimações pela IA (fase 5) e as minutas entram no mesmo limite do mês.
   const intimacoes = getIntimacoesMonthCostUsd(supabase);
   if (getTeamMemberContext()) {
     // Service role (WhatsApp): a função do banco depende do login (auth.uid())
     // e devolveria zero. Soma direto, em páginas.
-    return (await sumMonthCostDirect(supabase)) + (await intimacoes);
+    const minutas = getMinutasMonthCostUsd(supabase, { serviceRole: true });
+    return (await sumMonthCostDirect(supabase)) + (await intimacoes) + (await minutas);
   }
+  const minutas = getMinutasMonthCostUsd(supabase);
   const { data, error } = await supabase.rpc("assistant_month_cost");
   if (error) {
     if (isMissingTable(error)) throw new AssistantSetupError();
     throw new Error(`Falha ao ler o gasto do mês: ${error.message}`);
   }
-  return Number(data ?? 0) + (await intimacoes);
+  return Number(data ?? 0) + (await intimacoes) + (await minutas);
 }
 
 /** Início do mês corrente em São Paulo (sempre -03:00), em ISO. */

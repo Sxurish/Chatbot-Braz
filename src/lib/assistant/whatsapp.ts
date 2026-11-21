@@ -135,7 +135,8 @@ export function getWhatsappTools(user: Pick<TeamUser, "role">): AssistantTool[] 
   const consult = getToolsFor(false).filter((t) => !t.adminOnly);
   const drafts =
     user.role === "visualizador" ? [] : DRAFT_TOOLS.filter((t) => t.name !== "preparar_documento");
-  return [...consult, ...drafts];
+  // Minutas (redigir_minuta) só no CRM: nunca entram aqui.
+  return [...consult, ...drafts].filter((t) => t.name !== "redigir_minuta");
 }
 
 // ---------------------------------------------------------------------------

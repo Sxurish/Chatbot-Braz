@@ -17,6 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/assistant/markdown";
 import { DraftCard } from "@/components/assistant/draft-card";
+import { MinutaCard } from "@/components/assistant/minuta-card";
 import type { useAssistant } from "@/components/assistant/use-assistant";
 import { ACCEPT_ATTRIBUTE, checkAttachment } from "@/lib/assistant/attachment-rules";
 
@@ -45,7 +46,7 @@ export function AssistantChat({
   pagePath: string | null;
   variant: "panel" | "page";
 }) {
-  const { turns, busy, toolLabel, status, statusError, budgetNotice, send, stop, updateDraft } = api;
+  const { turns, busy, toolLabel, status, statusError, budgetNotice, send, stop, updateDraft, updateMinuta } = api;
   const [draft, setDraft] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -208,6 +209,9 @@ export function AssistantChat({
                         readOnly={status?.canWrite === false}
                         onChange={(change) => updateDraft(d.id, change)}
                       />
+                    ))}
+                    {t.minutas?.map((m) => (
+                      <MinutaCard key={m.id} minuta={m} onChange={(change) => updateMinuta(m.id, change)} />
                     ))}
                   </div>
                 </div>

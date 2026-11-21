@@ -33,6 +33,7 @@ import {
 import { getToolsFor } from "@/lib/assistant/tools";
 import { friendlyApiError, withNotes } from "@/lib/assistant/turn";
 import { getSettings } from "@/lib/data/settings";
+import { MINUTA_TOOLS } from "@/lib/minutas/tool";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -205,7 +206,8 @@ export async function POST(request: Request) {
   }
   const model = file ? ASSISTANT_DOC_MODEL : ASSISTANT_MODEL;
   const writer = canWrite(session);
-  const tools = [...getToolsFor(isAdmin), ...(writer ? DRAFT_TOOLS : [])];
+  // Minutas: oferecida a todos no painel; o papel (Admin ou Advogado) é conferido na ferramenta.
+  const tools = [...getToolsFor(isAdmin), ...(writer ? DRAFT_TOOLS : []), ...MINUTA_TOOLS];
 
   const now = new Date();
   const client = new Anthropic();
