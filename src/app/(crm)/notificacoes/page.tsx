@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MarkAllRead, ReadToggle } from "./read-buttons";
 import {
   Bell,
   AlertTriangle,
@@ -69,6 +70,7 @@ export default async function NotificationsPage(props: { searchParams: Promise<R
             ? `${unread} não lida(s). Alertas internos da operação.`
             : "Alertas internos da operação."
         }
+        action={unread > 0 ? <MarkAllRead /> : undefined}
       />
 
       {all.length > 0 && (
@@ -151,12 +153,17 @@ export default async function NotificationsPage(props: { searchParams: Promise<R
               </div>
             );
 
-            return href ? (
-              <Link key={n.id} href={href} className="block hover:bg-slate-50">
-                {content}
-              </Link>
-            ) : (
-              <div key={n.id}>{content}</div>
+            return (
+              <div key={n.id} className="flex items-center gap-1 pr-3">
+                {href ? (
+                  <Link href={href} className="block min-w-0 flex-1 hover:bg-slate-50">
+                    {content}
+                  </Link>
+                ) : (
+                  <div className="min-w-0 flex-1">{content}</div>
+                )}
+                <ReadToggle id={n.id} read={n.read} />
+              </div>
             );
           })}
         </Card>

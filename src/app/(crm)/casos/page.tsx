@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Briefcase } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
@@ -91,10 +92,12 @@ export default async function CasesPage(props: { searchParams: Promise<RawParams
       ) : (
         <div className="space-y-3">
           {shown.map((c) => (
-            <Card key={c.id} className="p-4">
-              <div className="flex items-start justify-between gap-4">
+            <Card key={c.id} className="p-4 transition-colors hover:border-brand-primary/40">
+              <Link href={`/casos/${c.id}`} className="group flex items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="font-medium text-slate-900">{c.title}</p>
+                  <p className="font-medium text-slate-900 group-hover:text-brand-primary group-hover:underline">
+                    {c.title}
+                  </p>
                   {c.summary && (
                     <p className="mt-1 line-clamp-2 text-sm text-slate-600">
                       {c.summary}
@@ -108,7 +111,7 @@ export default async function CasesPage(props: { searchParams: Promise<RawParams
                   <AreaBadge area={c.legal_area} />
                   <LegalStatusBadge status={c.status} />
                 </div>
-              </div>
+              </Link>
             </Card>
           ))}
         </div>

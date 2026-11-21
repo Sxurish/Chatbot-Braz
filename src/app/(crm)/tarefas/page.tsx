@@ -3,7 +3,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
-import { QuickCreate } from "@/components/crm/quick-create";
+import { EditOperationButton, QuickCreate } from "@/components/crm/quick-create";
+import { ConfirmDeleteButton, StatusButton } from "@/components/crm/record-actions";
+import { canWriteRecords, listResponsibleOptions } from "@/lib/data/cadastros-options";
+import { Check, RotateCcw } from "lucide-react";
 import { getTeamNames } from "@/lib/data/team-names";
 import { nameOf } from "@/lib/team-names";
 import { listTasks } from "@/lib/data/crm";
@@ -35,7 +38,13 @@ const PRIORITY_TONE: Record<TaskPriority, string> = {
 
 export default async function TasksPage(props: { searchParams: Promise<RawParams> }) {
   const sp = await props.searchParams;
-  const [all, names, me] = await Promise.all([listTasks(), getTeamNames(), getCurrentUser()]);
+  const [all, names, me, canWrite, assignees] = await Promise.all([
+    listTasks(),
+    getTeamNames(),
+    getCurrentUser(),
+    canWriteRecords(),
+    listResponsibleOptions(),
+  ]);
   const view = parseTaskView(sp, names);
   const filtered = isTaskViewFiltered(view);
   const tasks = sortTasks(
@@ -47,7 +56,7 @@ export default async function TasksPage(props: { searchParams: Promise<RawParams
       <PageHeader
         title="Tarefas"
         description="Ações internas vinculadas a leads, clientes, casos e processos."
-        action={<QuickCreate kind="task" buttonLabel="Nova tarefa" />}
+        action={canWrite ? <QuickCreate kind="task" buttonLabel="Nova tarefa" assignees={assignees} /> : undefined}
       />
       {all.length > 0 && (
         <ListToolbar
@@ -91,10 +100,21 @@ export default async function TasksPage(props: { searchParams: Promise<RawParams
       ) : (
         <div className="space-y-3">
           {tasks.map((task) => (
-            <Card key={task.id} className="flex items-center justify-between p-4">
+            <Card
+              key={task.id}
+              className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <p className="font-medium text-slate-900">{task.title}</p>
+                  <p
+                    className={
+                      task.status === "concluida" || task.status === "cancelada"
+                        ? "font-medium text-slate-400 line-through"
+                        : "font-medium text-slate-900"
+                    }
+                  >
+                    {task.title}
+                  </p>
                   <Badge className={PRIORITY_TONE[task.priority]}>{task.priority}</Badge>
                 </div>
                 <p className="mt-1 text-xs text-slate-500">
@@ -112,9 +132,35 @@ export default async function TasksPage(props: { searchParams: Promise<RawParams
                   )}
                 </p>
               </div>
-              <Badge className="border-slate-200 bg-slate-50 text-slate-600">
-                {TASK_STATUS_LABELS[task.status]}
-              </Badge>
+              <div className="flex shrink-0 flex-wrap items-center gap-1 border-t border-slate-100 pt-2 sm:border-0 sm:pt-0">
+                <Badge className="mr-1 border-slate-200 bg-slate-50 text-slate-600">
+                  {TASK_STATUS_LABELS[task.status]}
+                </Badge>
+                {canWrite && (
+                  <>
+                    {task.status === "concluida" || task.status === "cancelada" ? (
+                      <StatusButton
+                        kind="task"
+                        id={task.id}
+                        status="pendente"
+                        label="Reabrir"
+                        icon={<RotateCcw className="h-3.5 w-3.5" />}
+                      />
+                    ) : (
+                      <StatusButton
+                        kind="task"
+                        id={task.id}
+                        status="concluida"
+                        label="Concluir"
+                        tone="primary"
+                        icon={<Check className="h-3.5 w-3.5" />}
+                      />
+                    )}
+                    <EditOperationButton kind="task" record={task} assignees={assignees} />
+                    <ConfirmDeleteButton fields={{ kind: "task", id: task.id }} question="Remover a tarefa?" />
+                  </>
+                )}
+              </div>
             </Card>
           ))}
         </div>
