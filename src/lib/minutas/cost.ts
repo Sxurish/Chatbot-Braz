@@ -9,7 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
  * - Com o login de quem usa (RLS só mostra as próprias minutas): função do
  *   banco assistant_minutas_month_cost(), que soma as de toda a equipe.
  * - Com o cliente de serviço: soma direto na tabela.
- * Sem o supabase/minutas.sql rodado, devolve zero (não há minutas ainda).
+ * Sem o supabase/assistente-documentos.sql rodado, devolve zero (não há minutas ainda).
  */
 
 type AnyClient = Pick<SupabaseClient, "from"> & Partial<Pick<SupabaseClient, "rpc">>;

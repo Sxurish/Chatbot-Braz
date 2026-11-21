@@ -4,7 +4,7 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { MinutaRefs, MinutaStatus, MinutaTipo, MinutaView } from "@/lib/minutas/types";
 
 /**
- * Persistência das minutas (tabela assistant_minutas, supabase/minutas.sql).
+ * Persistência das minutas (tabela assistant_minutas, supabase/assistente-documentos.sql).
  * Cada minuta é de quem a pediu: RLS e user_id explícito em toda consulta.
  * O custo da chamada ao Sonnet fica na própria linha (cost_usd) e entra no
  * limite mensal do assistente (src/lib/minutas/cost.ts).
@@ -13,7 +13,7 @@ import type { MinutaRefs, MinutaStatus, MinutaTipo, MinutaView } from "@/lib/min
 
 export class MinutasSetupError extends Error {
   constructor() {
-    super("O banco ainda não está pronto para minutas. Rode o arquivo supabase/minutas.sql no SQL Editor do Supabase.");
+    super("O banco ainda não está pronto para minutas. Rode o arquivo supabase/assistente-documentos.sql no SQL Editor do Supabase.");
   }
 }
 
@@ -166,7 +166,7 @@ export async function listMinutas(userId: string, conversationId: string): Promi
     .neq("status", "falhou")
     .order("created_at", { ascending: true })
     .limit(100);
-  // Banco sem minutas.sql: a conversa abre normalmente, só sem os cartões.
+  // Banco sem assistente-documentos.sql: a conversa abre normalmente, só sem os cartões.
   if (error) return [];
   return ((data ?? []) as unknown as MinutaRow[]).map(toView);
 }

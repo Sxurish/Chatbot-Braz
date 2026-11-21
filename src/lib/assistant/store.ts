@@ -129,7 +129,7 @@ export interface MonthSpendByModel {
 /**
  * Divide o gasto do mês por modelo. Usa a função assistant_month_cost_by_model
  * (supabase/assistente-documentos.sql); sem ela, devolve null e a tela mostra
- * só o total. A leitura das intimações pela IA usa o Sonnet e entra nele.
+ * só o total. A leitura das intimações e as minutas usam o Sonnet e entram nele.
  * Uma pergunta que o Haiku passou para o Sonnet conta como Sonnet.
  */
 export async function getMonthSpendByModel(): Promise<MonthSpendByModel | null> {
@@ -143,7 +143,11 @@ export async function getMonthSpendByModel(): Promise<MonthSpendByModel | null> 
     if ((row.model ?? "").includes("haiku")) out.haiku += cost;
     else out.sonnet += cost;
   }
-  out.sonnet += await getIntimacoesMonthCostUsd(supabase);
+  const [intimacoes, minutas] = await Promise.all([
+    getIntimacoesMonthCostUsd(supabase),
+    getMinutasMonthCostUsd(supabase),
+  ]);
+  out.sonnet += intimacoes + minutas;
   return out;
 }
 

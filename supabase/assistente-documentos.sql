@@ -1,14 +1,40 @@
 -- ============================================================================
--- Minutas escritas pela IA pelo assistente da equipe (só no CRM).
--- Idempotente: pode rodar mais de uma vez. Rode DEPOIS dos arquivos
--- assistente-fase1.sql e assistente-fase2.sql.
+-- Documentos pelo assistente (2026-11-20): rode UMA vez no SQL Editor do
+-- projeto "CRM/ChatBot-Jurídico". Idempotente: pode rodar de novo.
+-- Rode DEPOIS de assistente-fase1.sql, fase2 e fase3 (ou da instalacao-completa.sql).
 --
--- - assistant_minutas: cada minuta é de quem pediu (RLS). Guarda o texto
---   editável, os vínculos (processo, caso, lead, cliente) e o custo da
---   chamada ao Sonnet, que entra no limite mensal do assistente.
--- - assistant_minutas_month_cost(): soma do mês de toda a equipe (a RLS só
---   deixa cada um ver as próprias minutas).
+-- 1. Rascunho do tipo "modelo" (preencher modelos .docx pelo chat).
+-- 2. Gasto do mês separado entre Haiku e Sonnet (tela Configurações).
+-- 3. Minutas escritas pela IA (tabela assistant_minutas).
 -- ============================================================================
+
+-- 1. Aceita o tipo "modelo" nos rascunhos do assistente.
+alter table public.assistant_drafts
+  drop constraint if exists assistant_drafts_kind_check;
+alter table public.assistant_drafts
+  add constraint assistant_drafts_kind_check
+  check (kind in ('processo', 'lead', 'tarefa', 'prazo', 'compromisso', 'documento', 'andamento', 'modelo'));
+
+-- 2. Gasto do mês por modelo (toda a equipe; a RLS só mostraria as próprias linhas).
+create or replace function public.assistant_month_cost_by_model()
+returns table (model text, cost_usd numeric)
+language sql
+security definer
+stable
+set search_path = public
+as $$
+  select m.model, coalesce(sum(m.cost_usd), 0)
+  from public.assistant_messages m
+  where public.is_team_member()
+    and m.created_at >= date_trunc('month', now() at time zone 'America/Sao_Paulo')
+                          at time zone 'America/Sao_Paulo'
+  group by m.model;
+$$;
+
+revoke all on function public.assistant_month_cost_by_model() from public;
+grant execute on function public.assistant_month_cost_by_model() to authenticated;
+
+-- 3. Minutas escritas pela IA.
 
 create table if not exists public.assistant_minutas (
   id uuid primary key default gen_random_uuid(),
