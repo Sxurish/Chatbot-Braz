@@ -6,10 +6,28 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { listClients } from "@/lib/data/fase6";
 import { formatDate, getInitials } from "@/lib/utils";
 import { canWriteRecords } from "@/lib/data/cadastros-options";
+import { ListToolbar } from "@/components/crm/list-toolbar";
+import type { RawParams } from "@/lib/list-params";
+import {
+  CLIENT_SORTS,
+  CLIENT_SORT_LABELS,
+  CLIENT_STATUS_LABELS,
+  clientFiltersActive,
+  clientPlaceOptions,
+  filterClients,
+  parseClientOptions,
+  sortClients,
+} from "@/lib/list-views/clientes";
 import { NewClientButton } from "./new-client-button";
 
-export default async function ClientsPage() {
+const toOptions = (values: string[]) => values.map((v) => ({ value: v, label: v }));
+
+export default async function ClientsPage(props: { searchParams: Promise<RawParams> }) {
+  const sp = await props.searchParams;
   const [clients, canWrite] = await Promise.all([listClients(), canWriteRecords()]);
+  const places = clientPlaceOptions(clients);
+  const o = parseClientOptions(sp, places);
+  const shown = sortClients(filterClients(clients, o), o.ordem);
 
   return (
     <>
@@ -19,14 +37,37 @@ export default async function ClientsPage() {
         action={canWrite ? <NewClientButton /> : undefined}
       />
 
+      {clients.length > 0 && (
+        <ListToolbar
+          path="/clientes"
+          search={{ value: o.q, placeholder: "Buscar por nome, telefone, e-mail, CPF/CNPJ ou cidade..." }}
+          selects={[
+            {
+              name: "status",
+              label: "Situação",
+              value: o.status,
+              options: Object.entries(CLIENT_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+              allLabel: "Todas",
+            },
+            { name: "uf", label: "UF", value: o.uf, options: toOptions(places.ufs), allLabel: "Todas" },
+            { name: "cidade", label: "Cidade", value: o.cidade, options: toOptions(places.cidades), allLabel: "Todas" },
+          ]}
+          sort={{ value: o.ordem, options: CLIENT_SORTS.map((v) => ({ value: v, label: CLIENT_SORT_LABELS[v] })) }}
+          active={clientFiltersActive(o)}
+          count={{ shown: shown.length, total: clients.length, singular: "cliente", plural: "clientes" }}
+        />
+      )}
+
       {clients.length === 0 ? (
         <EmptyState
           title="Nenhum cliente ainda"
           description="Converta um lead em cliente pela página do lead ou use “Novo cliente”."
         />
+      ) : shown.length === 0 ? (
+        <EmptyState title="Nenhum cliente encontrado" description="Ajuste a busca ou os filtros." />
       ) : (
         <Card className="divide-y divide-slate-100">
-          {clients.map((c) => (
+          {shown.map((c) => (
             <div key={c.id} className="flex items-center justify-between p-4">
               <div className="flex items-center gap-3">
                 <Avatar fallback={getInitials(c.full_name)} />
