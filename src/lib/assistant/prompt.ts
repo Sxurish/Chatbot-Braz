@@ -1,5 +1,6 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { OFFICE_OAB } from "@/lib/constants";
+import { ESCALATION_TOOL_NAME, SONNET_DIRECT_TOOLS } from "@/lib/assistant/model-router";
 import type { TeamUser } from "@/lib/types";
 
 /**
@@ -34,6 +35,28 @@ Regras:
 12. Quando a pergunta for ambígua (ex.: dois leads com o mesmo nome), mostre as opções em vez de escolher uma.
 13. Se a pessoa estiver numa tela específica (informada como "Tela atual"), use isso para entender "este lead", "esta página" etc.`;
 
+/**
+ * Seção "Escolha do modelo": só vai para o Haiku quando a ferramenta de
+ * escalada está disponível. Se houver uma ferramenta que já chama o Sonnet
+ * sozinha (SONNET_DIRECT_TOOLS, ex.: redigir_minuta), a minuta vai por ela.
+ */
+export function buildModelChoiceInstructions(toolNames: readonly string[] = []): string {
+  const direct = SONNET_DIRECT_TOOLS.filter((n) => toolNames.includes(n));
+  const draftLine = direct.length
+    ? `- Para redigir minuta ou texto longo, use ${direct.join(" ou ")}: essa ferramenta já usa o modelo detalhado, então não peça ${ESCALATION_TOOL_NAME} para isso.`
+    : "- pedirem a redação de um texto longo ou de uma minuta (petição, parecer, notificação, e-mail longo para cliente);";
+  return `Escolha do modelo:
+Você é o modelo rápido (Claude Haiku). Existe um modelo detalhado (Claude Sonnet), mais caro e mais cuidadoso, que você aciona com a ferramenta ${ESCALATION_TOOL_NAME}. Quando você chama, a pergunta é refeita do zero pelo modelo detalhado com o mesmo histórico, e o que você escreveu nesta resposta não aparece.
+Peça a análise detalhada quando:
+- a análise envolver muitos andamentos ou intimações (ex.: resumir o histórico inteiro de um processo ou ler várias intimações juntas);
+- a pergunta comparar vários processos, casos ou clientes;
+${draftLine}
+- a pergunta jurídica for complexa (tese, estratégia, interpretação de lei, jurisprudência ou risco do caso);
+- você não tiver certeza da resposta.
+Responda você mesmo em consultas simples (um lead, um processo, os prazos da semana), listas, buscas e cadastros simples (preparar_*).
+Como pedir: chame ${ESCALATION_TOOL_NAME} sozinha, de preferência logo no começo, com um motivo curto, sem escrever texto antes. Nunca peça depois de preparar um rascunho nesta resposta. Se a ferramenta responder que a análise detalhada está pausada pelo limite do mês, responda você mesmo da melhor forma possível e avise isso em uma frase.`;
+}
+
 const ROLE_LABELS: Record<string, string> = {
   admin: "Admin",
   advogado: "Advogado(a)",
@@ -46,7 +69,13 @@ export function buildSystemPrompt(
   user: TeamUser,
   isAdmin: boolean,
   now: Date,
-  options: { canWrite?: boolean } = {}
+  options: {
+    canWrite?: boolean;
+    /** Haiku com a ferramenta de escalada: inclui a seção "Escolha do modelo". */
+    canEscalate?: boolean;
+    /** Nomes das ferramentas oferecidas (para o ponto de extensão SONNET_DIRECT_TOOLS). */
+    toolNames?: readonly string[];
+  } = {}
 ): Anthropic.TextBlockParam[] {
   const today = new Intl.DateTimeFormat("pt-BR", {
     timeZone: "America/Sao_Paulo",
@@ -58,8 +87,16 @@ export function buildSystemPrompt(
     minute: "2-digit",
   }).format(now);
 
+  // A parte fixa (e a escolha do modelo, quando vai) fica no prefixo em cache.
+  const fixed: Anthropic.TextBlockParam[] = options.canEscalate
+    ? [
+        { type: "text", text: STATIC_INSTRUCTIONS },
+        { type: "text", text: buildModelChoiceInstructions(options.toolNames), cache_control: { type: "ephemeral" } },
+      ]
+    : [{ type: "text", text: STATIC_INSTRUCTIONS, cache_control: { type: "ephemeral" } }];
+
   return [
-    { type: "text", text: STATIC_INSTRUCTIONS, cache_control: { type: "ephemeral" } },
+    ...fixed,
     {
       type: "text",
       text: `Agora: ${today} (horário de Brasília).

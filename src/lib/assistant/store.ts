@@ -31,6 +31,8 @@ export interface StoredMessage {
   tools_used: ToolUseRecord[];
   /** Arquivos enviados junto com a pergunta (fase 2). */
   attachments: { id: string; name: string }[];
+  /** Modelo que deu a resposta (só nas respostas do assistente). */
+  model?: string | null;
   created_at: string;
 }
 
@@ -296,7 +298,7 @@ export async function listMessages(
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(limit);
-  let { data, error } = await query("id, role, content, tools_used, attachments, created_at");
+  let { data, error } = await query("id, role, content, tools_used, attachments, model, created_at");
   if (error?.code === "42703") {
     // Banco ainda sem a fase 2 (coluna attachments): segue sem os anexos.
     ({ data, error } = await query("id, role, content, tools_used, created_at"));
@@ -334,6 +336,7 @@ export async function saveMessage(
       content: msg.content,
       tools_used: msg.toolsUsed ?? [],
       attachments: msg.attachments ?? [],
+      model: msg.model ?? null,
       created_at: now,
     });
     conv.updated_at = now;

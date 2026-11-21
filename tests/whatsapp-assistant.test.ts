@@ -514,4 +514,22 @@ describe("assistente pelo WhatsApp (ponta a ponta, demonstração)", () => {
     expect(names.some((n) => n.startsWith("preparar_"))).toBe(false);
     expect(JSON.stringify(c.calls[0].system)).toContain("Pode preparar cadastros: não");
   });
+
+  it("começa no Haiku e passa ao Sonnet quando o Haiku pede a análise detalhada", async () => {
+    const adv = member("advogado", { id: "wa-e2e-router" });
+    const c = scriptedClient([
+      { content: [toolUse("e1", "pedir_analise_detalhada", { motivo: "comparação entre processos" })], stop: "tool_use" },
+      { content: [text("Comparação detalhada dos processos.")], stop: "end_turn" },
+    ]);
+    const r = await handleTeamWhatsapp(adv, inbound("5511977778888", "compare os processos da Ana"), {
+      client: c.client,
+      send: async () => {},
+      db: null,
+    });
+    expect(r.outcome).toBe("answer");
+    expect(c.calls.map((x) => x.model)).toEqual(["claude-haiku-5-5", "claude-sonnet-5-5"]);
+    const names = (c.calls[1].tools ?? []).map((t) => ("name" in t ? t.name : ""));
+    expect(names).not.toContain("pedir_analise_detalhada");
+    expect(r.replies.join("\n")).toContain("Comparação detalhada");
+  });
 });

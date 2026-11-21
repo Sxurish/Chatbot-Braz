@@ -14,6 +14,8 @@ export interface ChatTurn {
   attachments?: { id: string; name: string }[];
   /** Rascunhos de cadastro preparados nesta resposta (cartões de confirmação). */
   drafts?: DraftView[];
+  /** Resposta dada pelo modelo detalhado (Sonnet): mostra a etiqueta na mensagem. */
+  detailed?: boolean;
 }
 
 export interface AssistantStatus {
@@ -57,6 +59,7 @@ type LoadedMessage = {
   content: string;
   attachments?: { id: string; name: string }[];
   tools_used?: { draftId?: string }[];
+  tier?: "rapido" | "detalhado";
 };
 
 /** Busca as mensagens de uma conversa (com os cartões); null se não existe ou não é desta pessoa. */
@@ -71,6 +74,7 @@ async function fetchTurns(id: string): Promise<ChatTurn[] | null> {
       role: m.role,
       content: m.content,
       attachments: m.attachments?.length ? m.attachments : undefined,
+      detailed: m.tier === "detalhado" || undefined,
       drafts: (m.tools_used ?? [])
         .map((t) => (t.draftId ? drafts.get(t.draftId) : undefined))
         .filter((d): d is DraftView => Boolean(d)),
@@ -244,6 +248,17 @@ export function useAssistant(pagePath: string | null) {
                 setToolLabel(null);
                 patch((t) => ({ ...t, content: t.content + String(event.delta ?? "") }));
                 break;
+              case "model": {
+                const detailed = event.tier === "detalhado";
+                if (event.escalated) {
+                  // O Haiku passou a pergunta ao Sonnet: a resposta recomeça do zero.
+                  setToolLabel("Preparando a resposta detalhada");
+                  patch((t) => ({ ...t, content: "", detailed }));
+                } else {
+                  patch((t) => ({ ...t, detailed }));
+                }
+                break;
+              }
               case "tool":
                 setToolLabel(String(event.label ?? "Consultando o CRM"));
                 break;

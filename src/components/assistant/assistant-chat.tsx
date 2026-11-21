@@ -187,6 +187,12 @@ export function AssistantChat({
                       t.error ? "border-red-200 bg-red-50" : "border-slate-200 bg-white"
                     )}
                   >
+                    {t.detailed && (
+                      <p className="mb-1.5 flex items-center gap-1 text-[11px] font-medium text-slate-400">
+                        <Sparkles className="h-3 w-3 text-brand-gold" />
+                        Resposta detalhada (Sonnet)
+                      </p>
+                    )}
                     {t.content ? (
                       <Markdown text={t.content} />
                     ) : (

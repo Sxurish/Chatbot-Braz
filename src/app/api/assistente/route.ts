@@ -1,14 +1,9 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
-import { buildHistory, runAgent, type AgentEvent } from "@/lib/assistant/agent";
+import { buildHistory, runRoutedAgent, type AgentEvent } from "@/lib/assistant/agent";
 import { readAttachment, linkAttachmentToConversation } from "@/lib/assistant/attachments";
-import {
-  ASSISTANT_DOC_MAX_TOKENS,
-  ASSISTANT_DOC_MODEL,
-  ASSISTANT_HISTORY_LIMIT,
-  ASSISTANT_MODEL,
-  isAssistantConfigured,
-} from "@/lib/assistant/config";
+import { ASSISTANT_HISTORY_LIMIT, isAssistantConfigured } from "@/lib/assistant/config";
+import { chooseInitialTier } from "@/lib/assistant/model-router";
 import { canWrite } from "@/lib/assistant/confirm-draft";
 import type { DraftView } from "@/lib/assistant/draft-schema";
 import { DRAFT_TOOLS } from "@/lib/assistant/draft-tools";
@@ -16,7 +11,6 @@ import { listDrafts } from "@/lib/assistant/drafts";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import {
   budgetMessage,
-  computeCostUsd,
   getBudgetStatus,
   type BudgetStatus,
 } from "@/lib/assistant/cost";
@@ -203,7 +197,8 @@ export async function POST(request: Request) {
       },
     ];
   }
-  const model = file ? ASSISTANT_DOC_MODEL : ASSISTANT_MODEL;
+  // Haiku começa; com arquivo, o Sonnet já lê. O Haiku pode escalar uma vez.
+  const initialTier = chooseInitialTier({ hasAttachment: Boolean(file) });
   const writer = canWrite(session);
   const tools = [...getToolsFor(isAdmin), ...(writer ? DRAFT_TOOLS : [])];
 
@@ -230,10 +225,16 @@ export async function POST(request: Request) {
       });
 
       try {
-        const result = await runAgent({
+        const result = await runRoutedAgent({
           client,
-          model,
-          system: buildSystemPrompt(user, isAdmin, now, { canWrite: writer }),
+          initialTier,
+          detailedAllowed: budget.allowDocuments,
+          buildSystem: ({ canEscalate }) =>
+            buildSystemPrompt(user, isAdmin, now, {
+              canWrite: writer,
+              canEscalate,
+              toolNames: tools.map((t) => t.name),
+            }),
           tools,
           messages,
           ctx: {
@@ -248,18 +249,17 @@ export async function POST(request: Request) {
           },
           signal: abort.signal,
           onEvent: (e: AgentEvent) => send(e),
-          ...(file ? { effort: "medium" as const, maxTokens: ASSISTANT_DOC_MAX_TOKENS } : {}),
         });
-        const costUsd = computeCostUsd(model, result.usage);
         await saveMessage(user.id, conversationId, {
           role: "assistant",
           content: result.text,
           toolsUsed: result.toolsUsed,
-          model,
+          // Modelo da resposta final; o custo soma cada parte com o preço do seu modelo.
+          model: result.model,
           usage: result.usage,
-          costUsd,
+          costUsd: result.costUsd,
         });
-        send({ type: "done", conversationId, toolsUsed: result.toolsUsed });
+        send({ type: "done", conversationId, toolsUsed: result.toolsUsed, tier: result.tier });
       } catch (err) {
         if (abort.signal.aborted) {
           controller.close();

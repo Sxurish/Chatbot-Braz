@@ -1,4 +1,5 @@
 import { listDrafts } from "@/lib/assistant/drafts";
+import { tierOfModel } from "@/lib/assistant/model-router";
 import { getAssistantSession } from "@/lib/assistant/session";
 import { deleteConversation, getConversation, listMessages } from "@/lib/assistant/store";
 
@@ -17,7 +18,12 @@ export async function GET(_req: Request, { params }: Params) {
     listMessages(session.user.id, id),
     listDrafts(session.user.id, id),
   ]);
-  return Response.json({ conversation, messages, drafts });
+  // "tier" alimenta a etiqueta "Resposta detalhada (Sonnet)" nas respostas antigas.
+  const withTier = messages.map(({ model, ...m }) => ({
+    ...m,
+    ...(m.role === "assistant" && tierOfModel(model) ? { tier: tierOfModel(model) } : {}),
+  }));
+  return Response.json({ conversation, messages: withTier, drafts });
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
