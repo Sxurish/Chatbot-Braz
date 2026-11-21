@@ -15,7 +15,22 @@ import {
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ListToolbar } from "@/components/crm/list-toolbar";
 import { listNotifications } from "@/lib/data/crm";
+import type { RawParams } from "@/lib/list-params";
+import { optionsOf } from "@/lib/list-views/common";
+import {
+  NOTIFICATION_SORT_LABELS,
+  NOTIFICATION_SORTS,
+  NOTIFICATION_TYPES,
+  NOTIFICATION_TYPE_LABELS,
+  READ_FILTERS,
+  READ_FILTER_LABELS,
+  filterNotifications,
+  isNotificationViewFiltered,
+  parseNotificationView,
+  sortNotifications,
+} from "@/lib/list-views/notificacoes";
 import { timeAgo } from "@/lib/utils";
 import type { NotificationType } from "@/lib/types";
 
@@ -38,9 +53,12 @@ const ICONS: Record<
   automacao_falhou: { icon: ServerCrash, tone: "bg-red-100 text-red-600" },
 };
 
-export default async function NotificationsPage() {
-  const notifications = await listNotifications();
-  const unread = notifications.filter((n) => !n.read).length;
+export default async function NotificationsPage(props: { searchParams: Promise<RawParams> }) {
+  const sp = await props.searchParams;
+  const all = await listNotifications();
+  const unread = all.filter((n) => !n.read).length;
+  const view = parseNotificationView(sp);
+  const notifications = sortNotifications(filterNotifications(all, view), view.ordem);
 
   return (
     <>
@@ -53,11 +71,45 @@ export default async function NotificationsPage() {
         }
       />
 
+      {all.length > 0 && (
+        <ListToolbar
+          path="/notificacoes"
+          search={{ value: view.q, placeholder: "Buscar no título ou no texto" }}
+          selects={[
+            {
+              name: "leitura",
+              label: "Leitura",
+              value: view.leitura,
+              options: optionsOf(READ_FILTERS, READ_FILTER_LABELS),
+              allLabel: "Lidas e não lidas",
+            },
+            {
+              name: "tipo",
+              label: "Tipo",
+              value: view.tipo,
+              options: optionsOf(NOTIFICATION_TYPES, NOTIFICATION_TYPE_LABELS),
+            },
+          ]}
+          sort={{ value: view.ordem, options: optionsOf(NOTIFICATION_SORTS, NOTIFICATION_SORT_LABELS) }}
+          active={isNotificationViewFiltered(view)}
+          count={{
+            shown: notifications.length,
+            total: all.length,
+            singular: "notificação",
+            plural: "notificações",
+          }}
+        />
+      )}
+
       {notifications.length === 0 ? (
         <EmptyState
           icon={Bell}
-          title="Nenhuma notificação"
-          description="Você será avisado sobre novos leads, prazos e documentos."
+          title={all.length > 0 ? "Nenhuma notificação encontrada" : "Nenhuma notificação"}
+          description={
+            all.length > 0
+              ? "Mude ou limpe os filtros para ver outras notificações."
+              : "Você será avisado sobre novos leads, prazos e documentos."
+          }
         />
       ) : (
         <Card className="divide-y divide-slate-100">

@@ -29,8 +29,11 @@ import { EditTemplateDialog } from "./edit-dialog";
 
 export function TemplatesList({
   templates,
+  filtered = false,
 }: {
   templates: DocumentTemplate[];
+  /** Há templates cadastrados, mas os filtros esconderam todos. */
+  filtered?: boolean;
 }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<DocumentTemplate | null>(null);
@@ -46,11 +49,19 @@ export function TemplatesList({
       {templates.length === 0 ? (
         <Card>
           <CardContent className="py-12">
-            <EmptyState
-              icon={FileText}
-              title="Nenhum template cadastrado"
-              description="Crie templates .docx com placeholders {{cliente.nome}} para gerar documentos automaticamente."
-            />
+            {filtered ? (
+              <EmptyState
+                icon={FileText}
+                title="Nenhum template encontrado"
+                description="Mude ou limpe os filtros para ver outros templates."
+              />
+            ) : (
+              <EmptyState
+                icon={FileText}
+                title="Nenhum template cadastrado"
+                description="Crie templates .docx com placeholders {{cliente.nome}} para gerar documentos automaticamente."
+              />
+            )}
           </CardContent>
         </Card>
       ) : (
