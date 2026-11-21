@@ -31,6 +31,7 @@ import {
 import { sendText } from "@/lib/channels/whatsapp";
 import type { InboundMessage } from "@/lib/channels/types";
 import { getSettings } from "@/lib/data/settings";
+import { canGenerateFromTemplates } from "@/lib/data/templates-permissions";
 import { digestToWhatsappText, type DailyDigest } from "@/lib/digest/build";
 import {
   dbIntimacaoStore,
@@ -130,11 +131,19 @@ export async function findTeamMemberByPhone(
  * Ferramentas oferecidas pelo WhatsApp: as consultas sem NENHUMA financeira
  * (nem para Admin) e, para quem não é Visualizador, os rascunhos (menos
  * "anexar documento", porque arquivo não chega pelo WhatsApp nesta fase).
+ * Documento de modelo (preparar_modelo) só para Advogado(a) e Admin, e sem
+ * contratos (a ferramenta e o OK recusam contrato e honorários no WhatsApp).
  */
 export function getWhatsappTools(user: Pick<TeamUser, "role">): AssistantTool[] {
   const consult = getToolsFor(false).filter((t) => !t.adminOnly);
   const drafts =
-    user.role === "visualizador" ? [] : DRAFT_TOOLS.filter((t) => t.name !== "preparar_documento");
+    user.role === "visualizador"
+      ? []
+      : DRAFT_TOOLS.filter(
+          (t) =>
+            t.name !== "preparar_documento" &&
+            (t.name !== "preparar_modelo" || canGenerateFromTemplates(user.role))
+        );
   return [...consult, ...drafts];
 }
 
@@ -253,10 +262,12 @@ async function confirmPending(session: AssistantSession, pending: DraftView[]): 
   let okCount = 0;
   for (const d of pending) {
     const title = DRAFT_DEFS[d.kind].title;
-    const r = await confirmDraft(session, d.id, d.data);
+    const r = await confirmDraft(session, d.id, d.data, { channel: "whatsapp" });
     if (r.ok) {
       okCount++;
-      lines.push(`• ${r.message} ${absolute(r.link)}`);
+      // Documento de modelo: só o link do CRM (exige login), nunca o de download.
+      const login = d.kind === "modelo" ? " (abre com login no CRM)" : "";
+      lines.push(`• ${r.message} ${absolute(r.link)}${login}`);
     } else {
       lines.push(`• ${title}: não gravei. ${r.error}`);
     }

@@ -12,10 +12,10 @@ import type { DocumentCategory, LegalArea, LegalStatus, Urgency } from "@/lib/ty
  * grava: quem grava é a rota de confirmação, depois do clique em Confirmar.
  */
 
-export const DRAFT_KINDS = ["processo", "lead", "tarefa", "prazo", "compromisso", "documento", "andamento"] as const;
+export const DRAFT_KINDS = ["processo", "lead", "tarefa", "prazo", "compromisso", "documento", "andamento", "modelo"] as const;
 export type DraftKind = (typeof DRAFT_KINDS)[number];
 
-export type LinkEntity = "case" | "lead" | "client" | "process" | "user";
+export type LinkEntity = "case" | "lead" | "client" | "process" | "user" | "template";
 
 export type FieldType = "text" | "textarea" | "date" | "datetime" | "time" | "select" | "checkbox" | "link";
 
@@ -196,7 +196,56 @@ export const DRAFT_DEFS: Record<DraftKind, { title: string; fields: FieldDef[] }
       },
     ],
   },
+  // Documento gerado de um modelo .docx (tela Templates). Os campos do modelo
+  // variam: os manuais ficam em "campo.<placeholder>" e a prévia dos
+  // automáticos em "auto.<placeholder>" (ver MODELO_* abaixo).
+  modelo: {
+    title: "Gerar documento do modelo",
+    fields: [
+      { key: "template_id", label: "Modelo", type: "link", entity: "template", required: true },
+      { key: "lead_id", label: "Para quem (lead)", type: "link", entity: "lead", required: true },
+    ],
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Rascunho "modelo": campos variáveis do template
+// ---------------------------------------------------------------------------
+/** Prefixo dos campos manuais (a pessoa edita no cartão). */
+export const MODELO_FIELD_PREFIX = "campo.";
+/** Prefixo da prévia dos campos automáticos (só leitura; refeita na geração). */
+export const MODELO_AUTO_PREFIX = "auto.";
+/** Chave com a categoria do modelo (só para mostrar; a permissão usa o banco). */
+export const MODELO_CATEGORY_KEY = "template_category";
+
+const PLACEHOLDER_RE = /^[\w.]{1,80}$/;
+
+function keysWithPrefix(data: DraftData, prefix: string): string[] {
+  return Object.keys(data)
+    .filter((k) => k.startsWith(prefix) && PLACEHOLDER_RE.test(k.slice(prefix.length)))
+    .map((k) => k.slice(prefix.length))
+    .sort();
+}
+
+/** Placeholders manuais presentes no rascunho. */
+export function modeloManualFields(data: DraftData): string[] {
+  return keysWithPrefix(data, MODELO_FIELD_PREFIX);
+}
+
+/** Placeholders automáticos (prévia) presentes no rascunho. */
+export function modeloAutoFields(data: DraftData): string[] {
+  return keysWithPrefix(data, MODELO_AUTO_PREFIX);
+}
+
+/** Valores manuais preenchidos, prontos para a geração ({placeholder: valor}). */
+export function modeloOverrides(data: DraftData): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const key of modeloManualFields(data)) {
+    const v = data[`${MODELO_FIELD_PREFIX}${key}`];
+    if (typeof v === "string" && v.trim()) out[key] = v.trim();
+  }
+  return out;
+}
 
 /** Categoria sugerida para o arquivo anexado, conforme o tipo de cadastro. */
 export const DEFAULT_ATTACH_CATEGORY: Record<DraftKind, DocumentCategory> = {
@@ -207,6 +256,7 @@ export const DEFAULT_ATTACH_CATEGORY: Record<DraftKind, DocumentCategory> = {
   compromisso: "outros",
   documento: "outros",
   andamento: "outros",
+  modelo: "outros",
 };
 
 export function linkLabelKey(key: string) {
@@ -422,6 +472,15 @@ export const CONFIRM_SCHEMAS = {
         .max(2000, "Texto muito longo (máx. 2000)."),
     })
     .refine((v) => v.process_id, { message: "Escolha o processo do andamento.", path: ["process_id"] }),
+  modelo: z
+    .object({
+      template_id: uuid,
+      lead_id: uuid,
+      [MODELO_CATEGORY_KEY]: text(60),
+    })
+    .catchall(z.union([z.string().max(4000, "Texto muito longo (máx. 4000)."), z.boolean(), z.null(), z.undefined()]))
+    .refine((v) => v.template_id, { message: "Escolha o modelo.", path: ["template_id"] })
+    .refine((v) => v.lead_id, { message: "Escolha para quem é o documento (lead).", path: ["lead_id"] }),
 } satisfies Record<DraftKind, z.ZodType>;
 
 export type ConfirmedData<K extends DraftKind> = z.output<(typeof CONFIRM_SCHEMAS)[K]>;
@@ -448,6 +507,20 @@ export function pickDraftFields(kind: DraftKind, data: unknown): DraftData {
       const label = src[linkLabelKey(f.key)];
       if (typeof label === "string") out[linkLabelKey(f.key)] = label.slice(0, 200);
     }
+  }
+  if (kind === "modelo") {
+    // Campos variáveis do modelo: só strings, com nomes de placeholder válidos.
+    for (const [k, v] of Object.entries(src)) {
+      const prefix = k.startsWith(MODELO_FIELD_PREFIX)
+        ? MODELO_FIELD_PREFIX
+        : k.startsWith(MODELO_AUTO_PREFIX)
+          ? MODELO_AUTO_PREFIX
+          : null;
+      if (!prefix || typeof v !== "string" || !PLACEHOLDER_RE.test(k.slice(prefix.length))) continue;
+      out[k] = v.slice(0, 4000);
+    }
+    const cat = src[MODELO_CATEGORY_KEY];
+    if (typeof cat === "string") out[MODELO_CATEGORY_KEY] = cat.slice(0, 60);
   }
   return out;
 }
@@ -621,6 +694,9 @@ export function buildInsertPlan<K extends DraftKind>(kind: K, input: ConfirmedDa
         link: `/processos/${encodeURIComponent(d.process_id!)}`,
       };
     }
+    case "modelo":
+      // Não vira linha direta: o Confirmar chama generateDocumentFromTemplate.
+      throw new Error("O rascunho de modelo é gerado por generateDocumentFromTemplate.");
   }
   throw new Error(`Tipo de rascunho desconhecido: ${kind}`);
 }
