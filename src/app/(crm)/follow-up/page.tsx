@@ -2,7 +2,11 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { QuickCreate } from "@/components/crm/quick-create";
+import { EditOperationButton, QuickCreate } from "@/components/crm/quick-create";
+import { ConfirmDeleteButton, StatusButton } from "@/components/crm/record-actions";
+import { canWriteRecords, listResponsibleOptions } from "@/lib/data/cadastros-options";
+import { Badge } from "@/components/ui/badge";
+import { Check, RotateCcw } from "lucide-react";
 import { getTeamNames } from "@/lib/data/team-names";
 import { nameOf } from "@/lib/team-names";
 import { listFollowUps } from "@/lib/data/crm";
@@ -23,7 +27,12 @@ import { formatDateTime } from "@/lib/utils";
 
 export default async function FollowUpPage(props: { searchParams: Promise<RawParams> }) {
   const sp = await props.searchParams;
-  const [all, names] = await Promise.all([listFollowUps(), getTeamNames()]);
+  const [all, names, canWrite, assignees] = await Promise.all([
+    listFollowUps(),
+    getTeamNames(),
+    canWriteRecords(),
+    listResponsibleOptions(),
+  ]);
   const view = parseFollowUpView(sp, names);
   const followUps = sortFollowUps(filterFollowUps(all, view), view.ordem);
   return (
@@ -31,7 +40,9 @@ export default async function FollowUpPage(props: { searchParams: Promise<RawPar
       <PageHeader
         title="Follow-up"
         description="Contatos programados para retorno a leads e clientes."
-        action={<QuickCreate kind="followup" buttonLabel="Novo follow-up" />}
+        action={
+          canWrite ? <QuickCreate kind="followup" buttonLabel="Novo follow-up" assignees={assignees} /> : undefined
+        }
       />
       {all.length > 0 && (
         <ListToolbar
@@ -68,9 +79,18 @@ export default async function FollowUpPage(props: { searchParams: Promise<RawPar
       ) : (
         <div className="space-y-3">
           {followUps.map((fu) => (
-            <Card key={fu.id} className="flex items-center justify-between p-4">
-              <div>
-                <p className="font-medium text-slate-900">{fu.title}</p>
+            <Card
+              key={fu.id}
+              className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
+            >
+              <div className="min-w-0">
+                <p
+                  className={
+                    fu.status === "pendente" ? "font-medium text-slate-900" : "font-medium text-slate-400 line-through"
+                  }
+                >
+                  {fu.title}
+                </p>
                 {fu.description && (
                   <p className="text-sm text-slate-600">{fu.description}</p>
                 )}
@@ -88,6 +108,35 @@ export default async function FollowUpPage(props: { searchParams: Promise<RawPar
                     </>
                   )}
                 </p>
+              </div>
+              <div className="flex shrink-0 flex-wrap items-center gap-1 border-t border-slate-100 pt-2 sm:border-0 sm:pt-0">
+                <Badge className="mr-1 border-slate-200 bg-slate-50 text-slate-600">
+                  {FOLLOW_UP_STATUS_LABELS[fu.status]}
+                </Badge>
+                {canWrite && (
+                  <>
+                    {fu.status === "pendente" ? (
+                      <StatusButton
+                        kind="follow_up"
+                        id={fu.id}
+                        status="concluido"
+                        label="Feito"
+                        tone="primary"
+                        icon={<Check className="h-3.5 w-3.5" />}
+                      />
+                    ) : (
+                      <StatusButton
+                        kind="follow_up"
+                        id={fu.id}
+                        status="pendente"
+                        label="Reabrir"
+                        icon={<RotateCcw className="h-3.5 w-3.5" />}
+                      />
+                    )}
+                    <EditOperationButton kind="followup" record={fu} assignees={assignees} />
+                    <ConfirmDeleteButton fields={{ kind: "follow_up", id: fu.id }} question="Remover o follow-up?" />
+                  </>
+                )}
               </div>
             </Card>
           ))}

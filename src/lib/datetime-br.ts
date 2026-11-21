@@ -27,3 +27,16 @@ export function brInputToIso(value: string | null | undefined): string | null {
   if (LOCAL_DATETIME_RE.test(v)) return valid(`${v.length === 16 ? `${v}:00` : v}${OFFSET}`);
   return valid(v);
 }
+
+/**
+ * O contrário de brInputToIso: data gravada (ISO) no formato do campo
+ * `datetime-local` ("2026-11-20T14:00"), no horário de Brasília. Usado para
+ * preencher os formulários de edição. Vazio ou inválido: "".
+ */
+export function isoToBrInput(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  // -03:00 fixo (sem horário de verão desde 2019).
+  return new Date(d.getTime() - 3 * 3_600_000).toISOString().slice(0, 16);
+}

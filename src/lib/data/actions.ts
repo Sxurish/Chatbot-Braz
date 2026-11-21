@@ -7,6 +7,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { requireWriterAction } from "@/lib/auth/require-admin";
 import { brInputToIso } from "@/lib/datetime-br";
+import { parseAppointmentForm, parseFollowUpForm, parseTaskForm } from "@/lib/data/edicao-rules";
 
 export interface ActionState {
   ok?: boolean;
@@ -53,25 +54,11 @@ const leadIdField = z
 // ---------------------------------------------------------------------------
 // Tarefa
 // ---------------------------------------------------------------------------
-const taskSchema = z.object({
-  title: z.string().trim().min(2, "Informe um título."),
-  description: z.string().optional(),
-  due_date: z.string().optional(),
-  priority: z.enum(["alta", "media", "baixa"]).default("media"),
-  lead_id: leadIdField,
-});
-
 export async function createTaskAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const parsed = taskSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description") || undefined,
-    due_date: formData.get("due_date") || undefined,
-    priority: formData.get("priority") || "media",
-    lead_id: formData.get("lead_id") || undefined,
-  });
+  const parsed = parseTaskForm(formData, !isSupabaseConfigured());
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
@@ -90,6 +77,7 @@ export async function createTaskAction(
       due_date: dueDate,
       priority: parsed.data.priority,
       status: "pendente",
+      assigned_to: parsed.data.assigned_to ?? null,
       lead_id: parsed.data.lead_id ?? null,
     })
     .select("id")
@@ -105,23 +93,11 @@ export async function createTaskAction(
 // ---------------------------------------------------------------------------
 // Follow-up
 // ---------------------------------------------------------------------------
-const followUpSchema = z.object({
-  title: z.string().trim().min(2, "Informe um título."),
-  description: z.string().optional(),
-  scheduled_at: z.string().min(1, "Informe a data."),
-  lead_id: leadIdField,
-});
-
 export async function createFollowUpAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const parsed = followUpSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description") || undefined,
-    scheduled_at: formData.get("scheduled_at"),
-    lead_id: formData.get("lead_id") || undefined,
-  });
+  const parsed = parseFollowUpForm(formData, !isSupabaseConfigured());
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
@@ -139,6 +115,7 @@ export async function createFollowUpAction(
       description: parsed.data.description ?? null,
       scheduled_at: scheduledAt,
       status: "pendente",
+      assigned_to: parsed.data.assigned_to ?? null,
       lead_id: parsed.data.lead_id ?? null,
     })
     .select("id")
@@ -154,40 +131,16 @@ export async function createFollowUpAction(
 // ---------------------------------------------------------------------------
 // Agendamento
 // ---------------------------------------------------------------------------
-const appointmentSchema = z.object({
-  title: z.string().trim().min(2, "Informe um título."),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Informe a data."),
-  start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/, "Informe o horário."),
-  end_time: z
-    .string()
-    .regex(/^\d{2}:\d{2}(:\d{2})?$/, "Horário de fim inválido.")
-    .optional(),
-  modality: z.enum(["online", "presencial", "telefone"]).default("online"),
-  meeting_link: z.string().optional(),
-  lead_id: leadIdField,
-});
-
 export async function createAppointmentAction(
   _prev: ActionState,
   formData: FormData
 ): Promise<ActionState> {
-  const parsed = appointmentSchema.safeParse({
-    title: formData.get("title"),
-    date: formData.get("date"),
-    start_time: formData.get("start_time"),
-    end_time: formData.get("end_time") || undefined,
-    modality: formData.get("modality") || "online",
-    meeting_link: formData.get("meeting_link") || undefined,
-    lead_id: formData.get("lead_id") || undefined,
-  });
+  const parsed = parseAppointmentForm(formData, !isSupabaseConfigured());
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   }
   const writer = await requireWriterAction();
   if (!writer.ok) return { error: writer.error };
-  if (parsed.data.end_time && parsed.data.end_time <= parsed.data.start_time) {
-    return { error: "O fim precisa ser depois do início." };
-  }
   if (!isSupabaseConfigured()) return { ok: true, message: DEMO_NOTICE };
 
   const supabase = await createClient();
@@ -200,7 +153,9 @@ export async function createAppointmentAction(
       end_time: parsed.data.end_time ?? null,
       modality: parsed.data.modality,
       meeting_link: parsed.data.meeting_link ?? null,
+      notes: parsed.data.notes ?? null,
       status: "agendada",
+      assigned_to: parsed.data.assigned_to ?? null,
       lead_id: parsed.data.lead_id ?? null,
     })
     .select("id")
