@@ -1,28 +1,42 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { Loader2, Plus, Trash2, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SortHeader } from "@/components/crm/list-toolbar";
 import { PaymentStatusBadge } from "@/components/crm/status-badge";
 import { deletePaymentAction } from "@/lib/data/fase6-actions";
 import type { SelectOption } from "@/lib/data/fase6-options";
+import type { RawParams } from "@/lib/list-params";
+import type { PaymentRow, PaymentSort } from "@/lib/list-views/pagamentos";
 import type { Payment } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { PaymentDialog } from "./payment-dialog";
 
 export function PaymentsClient({
   payments,
+  rows,
   contracts,
   clients,
   isAdmin,
+  toolbar,
+  sp,
+  ordem,
 }: {
+  /** Todos os pagamentos. */
   payments: Payment[];
+  /** Os que passam pela busca e pelos filtros, já ordenados. */
+  rows: PaymentRow[];
   contracts: SelectOption[];
   clients: SelectOption[];
   isAdmin: boolean;
+  /** Barra de busca, filtros e ordenação (vem da página). */
+  toolbar?: ReactNode;
+  sp: RawParams;
+  ordem: PaymentSort;
 }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Payment | null>(null);
@@ -36,7 +50,15 @@ export function PaymentsClient({
         </Button>
       </div>
 
-      {payments.length === 0 ? (
+      {toolbar}
+
+      {payments.length > 0 && rows.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="Nenhum pagamento encontrado"
+          description="Nenhum pagamento corresponde à busca e aos filtros escolhidos."
+        />
+      ) : payments.length === 0 ? (
         <EmptyState
           icon={Wallet}
           title="Nenhum pagamento registrado"
@@ -49,20 +71,43 @@ export function PaymentsClient({
               <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3 font-medium">Descrição</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
-                  <th className="px-4 py-3 font-medium">Vencimento</th>
+                  <SortHeader path="/financeiro" sp={sp} current={ordem} text="Cliente" asc="cliente" className={th} />
+                  <SortHeader
+                    path="/financeiro"
+                    sp={sp}
+                    current={ordem}
+                    text="Valor"
+                    asc="valor_asc"
+                    desc="valor_desc"
+                    className={th}
+                  />
+                  <SortHeader
+                    path="/financeiro"
+                    sp={sp}
+                    current={ordem}
+                    text="Vencimento"
+                    asc="vencimento"
+                    desc="vencimento_desc"
+                    className={th}
+                  />
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {payments.map((p) => (
+                {rows.map(({ payment: p, clientName }) => (
                   <tr key={p.id} className="hover:bg-slate-50">
                     <td
                       className="cursor-pointer px-4 py-3 font-medium text-slate-900"
                       onClick={() => setEditing(p)}
                     >
                       {p.description ?? "—"}
+                    </td>
+                    <td
+                      className="cursor-pointer px-4 py-3 text-slate-700"
+                      onClick={() => setEditing(p)}
+                    >
+                      {clientName ?? "—"}
                     </td>
                     <td
                       className="cursor-pointer px-4 py-3 text-slate-700"
@@ -110,6 +155,8 @@ export function PaymentsClient({
     </>
   );
 }
+
+const th = "px-4 py-3 text-xs uppercase tracking-wide";
 
 function DeleteInner() {
   const { pending } = useFormStatus();

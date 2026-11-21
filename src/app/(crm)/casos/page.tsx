@@ -14,23 +14,43 @@ import {
   listLeadOptions,
   listResponsibleOptions,
 } from "@/lib/data/cadastros-options";
+import { ListToolbar } from "@/components/crm/list-toolbar";
+import { LEGAL_AREA_LABELS, LEGAL_STATUS_LABELS } from "@/lib/constants";
+import type { RawParams } from "@/lib/list-params";
+import {
+  CASE_SORTS,
+  CASE_SORT_LABELS,
+  NO_OWNER,
+  caseFiltersActive,
+  filterCases,
+  parseCaseOptions,
+  sortCases,
+} from "@/lib/list-views/casos";
+import { ownerOptions } from "@/lib/list-views/owners";
 import { NewCaseButton } from "./new-case-button";
 
-export default async function CasesPage() {
-  const [cases, names, canWrite] = await Promise.all([
+const labelOptions = (labels: Record<string, string>) =>
+  Object.entries(labels).map(([value, label]) => ({ value, label }));
+
+export default async function CasesPage(props: { searchParams: Promise<RawParams> }) {
+  const sp = await props.searchParams;
+  // Clientes e leads servem para a busca pelo nome da pessoa e para o formulário.
+  const [cases, names, canWrite, clients, leads] = await Promise.all([
     listCases(),
     getTeamNames(),
     canWriteRecords(),
+    listClientOptions(),
+    listLeadOptions(),
   ]);
   // Opções do formulário: só para quem pode gravar.
-  const [clients, leads, team, user] = canWrite
-    ? await Promise.all([
-        listClientOptions(),
-        listLeadOptions(),
-        listResponsibleOptions(),
-        getCurrentUser(),
-      ])
-    : [[], [], [], null];
+  const [team, user] = canWrite
+    ? await Promise.all([listResponsibleOptions(), getCurrentUser()])
+    : [[], null];
+
+  const people = Object.fromEntries([...leads, ...clients].map((p) => [p.id, p.label]));
+  const owners = ownerOptions(cases.map((c) => c.assigned_to), names, NO_OWNER);
+  const o = parseCaseOptions(sp, owners.map((x) => x.value));
+  const shown = sortCases(filterCases(cases, o, people), o.ordem);
 
   return (
     <>
@@ -49,11 +69,28 @@ export default async function CasesPage() {
         }
       />
 
+      {cases.length > 0 && (
+        <ListToolbar
+          path="/casos"
+          search={{ value: o.q, placeholder: "Buscar por título, resumo ou nome do cliente..." }}
+          selects={[
+            { name: "area", label: "Área", value: o.area, options: labelOptions(LEGAL_AREA_LABELS), allLabel: "Todas as áreas" },
+            { name: "status", label: "Andamento", value: o.status, options: labelOptions(LEGAL_STATUS_LABELS) },
+            { name: "resp", label: "Responsável", value: o.resp, options: owners },
+          ]}
+          sort={{ value: o.ordem, options: CASE_SORTS.map((v) => ({ value: v, label: CASE_SORT_LABELS[v] })) }}
+          active={caseFiltersActive(o)}
+          count={{ shown: shown.length, total: cases.length, singular: "caso", plural: "casos" }}
+        />
+      )}
+
       {cases.length === 0 ? (
         <EmptyState icon={Briefcase} title="Nenhum caso cadastrado" />
+      ) : shown.length === 0 ? (
+        <EmptyState icon={Briefcase} title="Nenhum caso encontrado" description="Ajuste a busca ou os filtros." />
       ) : (
         <div className="space-y-3">
-          {cases.map((c) => (
+          {shown.map((c) => (
             <Card key={c.id} className="p-4">
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">

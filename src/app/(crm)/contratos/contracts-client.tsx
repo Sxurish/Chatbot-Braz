@@ -1,28 +1,42 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, type ReactNode } from "react";
 import { useFormStatus } from "react-dom";
 import { FileSignature, Loader2, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SortHeader } from "@/components/crm/list-toolbar";
 import { ContractStatusBadge } from "@/components/crm/status-badge";
 import { deleteContractAction } from "@/lib/data/fase6-actions";
 import type { SelectOption } from "@/lib/data/fase6-options";
+import type { RawParams } from "@/lib/list-params";
+import type { ContractRow, ContractSort } from "@/lib/list-views/contratos";
 import type { Contract } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { ContractDialog } from "./contract-dialog";
 
 export function ContractsClient({
   contracts,
+  rows,
   clients,
   cases,
   isAdmin,
+  toolbar,
+  sp,
+  ordem,
 }: {
+  /** Todos os contratos (para os totais). */
   contracts: Contract[];
+  /** Os que passam pela busca e pelos filtros, já ordenados. */
+  rows: ContractRow[];
   clients: SelectOption[];
   cases: SelectOption[];
   isAdmin: boolean;
+  /** Barra de busca, filtros e ordenação (vem da página). */
+  toolbar?: ReactNode;
+  sp: RawParams;
+  ordem: ContractSort;
 }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
@@ -52,7 +66,15 @@ export function ContractsClient({
         </Button>
       </div>
 
-      {contracts.length === 0 ? (
+      {toolbar}
+
+      {contracts.length > 0 && rows.length === 0 ? (
+        <EmptyState
+          icon={FileSignature}
+          title="Nenhum contrato encontrado"
+          description="Nenhum contrato corresponde à busca e aos filtros escolhidos."
+        />
+      ) : contracts.length === 0 ? (
         <EmptyState
           icon={FileSignature}
           title="Nenhum contrato cadastrado"
@@ -64,22 +86,44 @@ export function ContractsClient({
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase tracking-wide text-slate-500">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Tipo</th>
-                  <th className="px-4 py-3 font-medium">Valor</th>
+                  <SortHeader path="/contratos" sp={sp} current={ordem} text="Tipo" asc="tipo" className={th} />
+                  <SortHeader path="/contratos" sp={sp} current={ordem} text="Cliente" asc="cliente" className={th} />
+                  <SortHeader
+                    path="/contratos"
+                    sp={sp}
+                    current={ordem}
+                    text="Valor"
+                    asc="valor_asc"
+                    desc="valor_desc"
+                    className={th}
+                  />
                   <th className="px-4 py-3 font-medium">Condições</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Assinado em</th>
+                  <SortHeader
+                    path="/contratos"
+                    sp={sp}
+                    current={ordem}
+                    text="Assinado em"
+                    asc="assinatura"
+                    className={th}
+                  />
                   <th className="px-4 py-3 text-right font-medium">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {contracts.map((c) => (
+                {rows.map(({ contract: c, clientName }) => (
                   <tr key={c.id} className="hover:bg-slate-50">
                     <td
                       className="cursor-pointer px-4 py-3 font-medium text-slate-900"
                       onClick={() => setEditing(c)}
                     >
                       {c.contract_type ?? "—"}
+                    </td>
+                    <td
+                      className="cursor-pointer px-4 py-3 text-slate-700"
+                      onClick={() => setEditing(c)}
+                    >
+                      {clientName ?? "—"}
                     </td>
                     <td
                       className="cursor-pointer px-4 py-3 text-slate-700"
@@ -133,6 +177,8 @@ export function ContractsClient({
     </>
   );
 }
+
+const th = "px-4 py-3 text-xs uppercase tracking-wide";
 
 function DeleteInner() {
   const { pending } = useFormStatus();

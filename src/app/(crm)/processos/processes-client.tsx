@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useState, useActionState, type ReactNode } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
 import { CalendarClock, Loader2, Pencil, Plus, RefreshCw, Trash2 } from "lucide-react";
@@ -19,10 +19,16 @@ export function ProcessesClient({
   processes,
   cases,
   isAdmin,
+  toolbar,
+  filtered = false,
 }: {
   processes: Process[];
   cases: SelectOption[];
   isAdmin: boolean;
+  /** Barra de busca, filtros e ordenação (vem da página). */
+  toolbar?: ReactNode;
+  /** Há processos, mas nenhum passa pelos filtros. */
+  filtered?: boolean;
 }) {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Process | null>(null);
@@ -35,7 +41,15 @@ export function ProcessesClient({
         </Button>
       </div>
 
-      {processes.length === 0 ? (
+      {toolbar}
+
+      {filtered ? (
+        <EmptyState
+          icon={Scale}
+          title="Nenhum processo encontrado"
+          description="Nenhum processo corresponde à busca e aos filtros escolhidos."
+        />
+      ) : processes.length === 0 ? (
         <EmptyState
           icon={Scale}
           title="Nenhum processo cadastrado"
