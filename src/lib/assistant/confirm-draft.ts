@@ -6,15 +6,30 @@ import { getAttachment } from "@/lib/assistant/attachments";
 import {
   buildInsertPlan,
   DRAFT_DEFS,
+  modeloOverrides,
   pickDraftFields,
   validateDraft,
+  type DraftData,
   type DraftKind,
 } from "@/lib/assistant/draft-schema";
 import { claimDraft, discardDraft, finishDraft, getDraft } from "@/lib/assistant/drafts";
 import type { AssistantSession } from "@/lib/assistant/session";
+import { generateDocumentFromTemplate } from "@/lib/data/templates-generate";
+import {
+  canGenerateFromTemplates,
+  TEMPLATE_ROLE_DENIED,
+  type TemplateChannel,
+} from "@/lib/data/templates-permissions";
+import { getTeamMemberContext } from "@/lib/supabase/request-context";
 
 export type ConfirmResult =
-  | { ok: true; link: string; message: string }
+  | {
+      ok: true;
+      link: string;
+      message: string;
+      /** Modelo gerado: link assinado para baixar agora (só no painel; nunca no WhatsApp). */
+      downloadUrl?: string;
+    }
   | { ok: false; error: string; field?: string; status?: number };
 
 const PAGES: Record<DraftKind, string[]> = {
@@ -25,6 +40,7 @@ const PAGES: Record<DraftKind, string[]> = {
   compromisso: ["/agenda"],
   documento: ["/documentos"],
   andamento: ["/processos"],
+  modelo: ["/documentos"],
 };
 
 /** Como o cadastro é chamado na mensagem de sucesso. */
@@ -60,12 +76,15 @@ export function canWrite(session: AssistantSession) {
 export async function confirmDraft(
   session: AssistantSession,
   draftId: string,
-  rawData: unknown
+  rawData: unknown,
+  options: { channel?: TemplateChannel } = {}
 ): Promise<ConfirmResult> {
   const { user } = session;
   if (!canWrite(session)) {
     return { ok: false, status: 403, error: "Seu papel na equipe é só de visualização." };
   }
+  const channel: TemplateChannel =
+    options.channel ?? (getTeamMemberContext()?.channel === "whatsapp" ? "whatsapp" : "painel");
   const draft = await getDraft(user.id, draftId);
   if (!draft) return { ok: false, status: 404, error: "Rascunho não encontrado." };
   if (draft.status !== "pendente") {
@@ -77,6 +96,12 @@ export async function confirmDraft(
   }
 
   const data = pickDraftFields(draft.kind, rawData);
+  if (draft.kind === "modelo") {
+    const checked = validateDraft("modelo", data);
+    if (!checked.ok) return { ok: false, status: 400, error: checked.error, field: checked.field };
+    return confirmModelo(session, draftId, data, channel);
+  }
+
   const valid = validateDraft(draft.kind, data);
   if (!valid.ok) return { ok: false, status: 400, error: valid.error, field: valid.field };
 
@@ -196,6 +221,80 @@ export async function confirmDraft(
       error: "Não consegui gravar agora. Confira os dados e tente de novo.",
     };
   }
+}
+
+/**
+ * Rascunho "modelo": gera o .docx pela mesma função do botão da ficha do
+ * lead. Papel e categoria do modelo são conferidos aqui e na geração.
+ */
+async function confirmModelo(
+  session: AssistantSession,
+  draftId: string,
+  data: DraftData,
+  channel: TemplateChannel
+): Promise<ConfirmResult> {
+  const { user } = session;
+  if (!canGenerateFromTemplates(user.role)) return { ok: false, status: 403, error: TEMPLATE_ROLE_DENIED };
+  const templateId = String(data.template_id ?? "");
+  const leadId = String(data.lead_id ?? "");
+
+  if (!(await claimDraft(user.id, draftId, data))) {
+    return { ok: false, status: 409, error: "Este rascunho já está sendo confirmado." };
+  }
+
+  if (!isSupabaseConfigured()) {
+    const link = leadId ? `/leads/${leadId}` : "/templates";
+    await finishDraft(user.id, draftId, { status: "confirmado", link });
+    return { ok: true, link, message: "Modo demonstração: documento conferido, mas nada foi gerado." };
+  }
+
+  let result;
+  try {
+    result = await generateDocumentFromTemplate({
+      templateId,
+      leadId,
+      overrides: modeloOverrides(data),
+      user: { id: user.id, role: user.role },
+      channel,
+      // No painel o link de download vale 10 minutos; no WhatsApp não vai.
+      downloadTtlSeconds: 600,
+      auditMeta: { draft_id: draftId, via: "assistente" },
+    });
+  } catch (err) {
+    console.error("[assistente] gerar documento do modelo", err);
+    result = { ok: false as const, error: "Não consegui gerar o documento agora. Tente de novo." };
+  }
+  if (!result.ok) {
+    await finishDraft(user.id, draftId, { status: "pendente" });
+    return { ok: false, status: 400, error: result.error };
+  }
+
+  try {
+    const supabase = await createClient();
+    await supabase.from("audit_logs").insert({
+      user_id: user.id,
+      action: "assistant_confirm",
+      entity_type: "documents",
+      entity_id: result.documentId,
+      metadata: { draft_id: draftId, kind: "modelo", template_id: templateId, channel },
+    });
+  } catch {
+    // não bloqueia: a geração já ficou registrada (generate_doc)
+  }
+
+  await finishDraft(user.id, draftId, {
+    status: "confirmado",
+    table: "documents",
+    resultId: result.documentId,
+    link: result.link,
+  });
+  for (const p of PAGES.modelo) safeRevalidate(p);
+  return {
+    ok: true,
+    link: result.link,
+    message: `Documento gerado: ${result.fileName}. Ficou na ficha do lead, com revisão pendente.`,
+    ...(channel === "painel" && result.url ? { downloadUrl: result.url } : {}),
+  };
 }
 
 export async function rejectDraft(session: AssistantSession, draftId: string): Promise<ConfirmResult> {

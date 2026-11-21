@@ -6,6 +6,7 @@ import {
   AlertTriangle,
   Check,
   ChevronDown,
+  Download,
   ExternalLink,
   FileText,
   Loader2,
@@ -19,6 +20,11 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   DRAFT_DEFS,
   linkLabelKey,
+  MODELO_AUTO_PREFIX,
+  MODELO_CATEGORY_KEY,
+  MODELO_FIELD_PREFIX,
+  modeloAutoFields,
+  modeloManualFields,
   type DraftData,
   type DraftView,
   type FieldDef,
@@ -46,6 +52,7 @@ export function DraftCard({
     field?: string;
   } | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
 
   // Depois de confirmado ou descartado, o cartão fica resumido.
   const done = draft.status !== "pendente";
@@ -96,6 +103,7 @@ export function DraftCard({
         return;
       }
       setNotice(body.message ?? null);
+      if (typeof body.downloadUrl === "string") setDownloadUrl(body.downloadUrl);
       onChange(
         action === "confirmar"
           ? { status: "confirmado", resultLink: body.link || null, data }
@@ -127,7 +135,7 @@ export function DraftCard({
             {def.title}
           </p>
         </div>
-        <StatusBadge status={draft.status} />
+        <StatusBadge status={draft.status} kind={draft.kind} />
       </header>
 
       <div className="space-y-3 px-3 py-3">
@@ -178,6 +186,16 @@ export function DraftCard({
               />
             ))}
           </div>
+        )}
+
+        {draft.kind === "modelo" && (!done || showAll) && (
+          <ModeloFields
+            data={data}
+            uncertain={uncertain}
+            invalidField={error?.field}
+            disabled={!editable}
+            onChange={set}
+          />
         )}
 
         {hidden > 0 && (
@@ -238,7 +256,17 @@ export function DraftCard({
         </footer>
       )}
       {draft.status === "confirmado" && draft.resultLink && (
-        <footer className="border-t px-3 py-2">
+        <footer className="flex flex-wrap items-center gap-4 border-t px-3 py-2">
+          {downloadUrl && (
+            <a
+              href={downloadUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-700 hover:underline"
+            >
+              Baixar o documento <Download className="h-3.5 w-3.5" />
+            </a>
+          )}
           <Link
             href={draft.resultLink}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-primary hover:underline"
@@ -251,11 +279,17 @@ export function DraftCard({
   );
 }
 
-function StatusBadge({ status }: { status: DraftView["status"] }) {
+function StatusBadge({
+  status,
+  kind,
+}: {
+  status: DraftView["status"];
+  kind: DraftView["kind"];
+}) {
   const map = {
     pendente: ["Para conferir", "bg-amber-100 text-amber-800"],
-    confirmando: ["Gravando…", "bg-slate-100 text-slate-700"],
-    confirmado: ["Cadastrado", "bg-emerald-100 text-emerald-800"],
+    confirmando: [kind === "modelo" ? "Gerando…" : "Gravando…", "bg-slate-100 text-slate-700"],
+    confirmado: [kind === "modelo" ? "Gerado" : "Cadastrado", "bg-emerald-100 text-emerald-800"],
     descartado: ["Descartado", "bg-slate-100 text-slate-600"],
   } as const;
   const [label, cls] = map[status];
@@ -420,6 +454,102 @@ function Field({
           value={str}
           onChange={(e) => onChange(f.key, e.target.value)}
         />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Rascunho de modelo: prévia dos campos que o CRM preenche sozinho (só
+ * leitura; os valores são lidos de novo na hora de gerar) e os campos
+ * manuais, editáveis. Vazios ficam em amarelo para conferir.
+ */
+function ModeloFields({
+  data,
+  uncertain,
+  invalidField,
+  disabled,
+  onChange,
+}: {
+  data: DraftData;
+  uncertain: Set<string>;
+  invalidField?: string;
+  disabled: boolean;
+  onChange: (key: string, value: string | boolean | null) => void;
+}) {
+  const baseId = useId();
+  const auto = modeloAutoFields(data);
+  const manual = modeloManualFields(data);
+  const category = data[MODELO_CATEGORY_KEY];
+  return (
+    <div className="space-y-3">
+      {typeof category === "string" && category && (
+        <p className="text-xs text-slate-600">
+          Categoria: <span className="font-medium">{category}</span>
+        </p>
+      )}
+      {auto.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Preenchidos pelo CRM
+          </p>
+          <dl className="grid grid-cols-1 gap-x-3 gap-y-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs @lg:grid-cols-2">
+            {auto.map((k) => {
+              const v = data[`${MODELO_AUTO_PREFIX}${k}`];
+              const value = typeof v === "string" ? v : "";
+              const flag = uncertain.has(`${MODELO_AUTO_PREFIX}${k}`) || !value;
+              return (
+                <div key={k} className="min-w-0">
+                  <dt className="font-mono text-[11px] text-slate-500">{k}</dt>
+                  <dd className={cn("truncate text-slate-800", flag && "text-amber-700")}>
+                    {value || "(vazio no CRM)"}
+                  </dd>
+                </div>
+              );
+            })}
+          </dl>
+        </div>
+      )}
+      {manual.length > 0 && (
+        <div>
+          <p className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-500">
+            Campos a preencher
+          </p>
+          <div className="grid grid-cols-1 gap-3 @lg:grid-cols-2">
+            {manual.map((k) => {
+              const key = `${MODELO_FIELD_PREFIX}${k}`;
+              const v = data[key];
+              const value = typeof v === "string" ? v : "";
+              const flag = uncertain.has(key) || !value.trim();
+              const id = `${baseId}-${k}`;
+              return (
+                <div key={k}>
+                  <label
+                    htmlFor={id}
+                    className="mb-1 flex items-center gap-1 text-xs font-medium text-slate-600"
+                  >
+                    <code className="font-mono">{k}</code>
+                    {flag && <span className="text-amber-700">(conferir)</span>}
+                  </label>
+                  <Input
+                    id={id}
+                    disabled={disabled}
+                    value={value}
+                    aria-invalid={invalidField === key || undefined}
+                    className={cn(
+                      flag && "border-amber-300 bg-amber-50",
+                      invalidField === key && "border-red-400 ring-1 ring-red-300",
+                    )}
+                    onChange={(e) => onChange(key, e.target.value)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {auto.length === 0 && manual.length === 0 && (
+        <p className="text-xs text-slate-500">Este modelo não tem campos para preencher.</p>
       )}
     </div>
   );

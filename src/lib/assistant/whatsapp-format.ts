@@ -1,4 +1,13 @@
-import { DRAFT_DEFS, linkLabelKey, type DraftView } from "@/lib/assistant/draft-schema";
+import {
+  DRAFT_DEFS,
+  linkLabelKey,
+  MODELO_AUTO_PREFIX,
+  MODELO_CATEGORY_KEY,
+  MODELO_FIELD_PREFIX,
+  modeloAutoFields,
+  modeloManualFields,
+  type DraftView,
+} from "@/lib/assistant/draft-schema";
 import { isSafeInternalHref } from "@/lib/assistant/links";
 
 /**
@@ -262,11 +271,37 @@ export function formatDraftForWhatsapp(draft: DraftView, baseUrl: string, label?
     if (value === null && !flag) continue;
     lines.push(`• ${f.label}: ${value ?? "(vazio)"}${flag ? " _(conferir)_" : ""}`);
   }
+  if (draft.kind === "modelo") lines.push(...formatModeloLines(draft));
   for (const d of draft.duplicates) {
     const link = isSafeInternalHref(d.link) ? `: ${base}${d.link}` : "";
     lines.push(`⚠️ Pode já existir no CRM: ${d.label} (${d.reason})${link}`);
   }
   return lines.join("\n");
+}
+
+/** Rascunho de modelo: categoria, prévia dos campos automáticos e campos manuais. */
+function formatModeloLines(draft: DraftView): string[] {
+  const uncertain = new Set(draft.uncertain);
+  const lines: string[] = [];
+  const cat = draft.data[MODELO_CATEGORY_KEY];
+  if (typeof cat === "string" && cat) lines.push(`• Categoria: ${cat}`);
+  const show = (prefix: string, key: string) => {
+    const raw = draft.data[`${prefix}${key}`];
+    const v = typeof raw === "string" ? raw.trim() : "";
+    const flag = uncertain.has(`${prefix}${key}`) || !v;
+    return `  ◦ ${key}: ${v ? (v.length > 120 ? `${v.slice(0, 120)}…` : v) : "(vazio)"}${flag ? " _(conferir)_" : ""}`;
+  };
+  const auto = modeloAutoFields(draft.data);
+  if (auto.length > 0) {
+    lines.push("• Preenchidos pelo CRM:");
+    for (const k of auto) lines.push(show(MODELO_AUTO_PREFIX, k));
+  }
+  const manual = modeloManualFields(draft.data);
+  if (manual.length > 0) {
+    lines.push("• Campos a preencher:");
+    for (const k of manual) lines.push(show(MODELO_FIELD_PREFIX, k));
+  }
+  return lines;
 }
 
 /** Rodapé com os rascunhos e o pedido de "OK". */

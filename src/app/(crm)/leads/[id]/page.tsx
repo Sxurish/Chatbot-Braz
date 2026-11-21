@@ -30,6 +30,8 @@ import { nameOf } from "@/lib/team-names";
 import { getLead } from "@/lib/data/leads";
 import { listDocumentsByLead } from "@/lib/data/crm";
 import { listTemplates } from "@/lib/data/templates-read";
+import { canGenerateFromTemplates } from "@/lib/data/templates-permissions";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { formatDate, formatDateTime } from "@/lib/utils";
 import { SOURCE_LABELS } from "@/lib/data/cadastros-rules";
 
@@ -44,11 +46,14 @@ export default async function LeadDetailPage(
 
   // A linha do tempo de exemplo só existe no modo demonstração.
   const timeline = isSupabaseConfigured() ? [] : (mockTimeline[lead.id] ?? []);
-  const [documents, templates, names] = await Promise.all([
+  const [documents, templates, names, currentUser] = await Promise.all([
     listDocumentsByLead(lead.id),
     listTemplates(true),
     getTeamNames(),
+    getCurrentUser(),
   ]);
+  // Só Advogado(a) e Admin geram documentos de modelo (o servidor confere de novo).
+  const canGenerate = canGenerateFromTemplates(currentUser.role);
 
   return (
     <>
@@ -65,7 +70,9 @@ export default async function LeadDetailPage(
         action={
           <div className="flex flex-wrap gap-2">
             <LeadHeaderActions leadId={lead.id} />
-            <GenerateDocumentButton leadId={lead.id} templates={templates} />
+            {canGenerate && (
+              <GenerateDocumentButton leadId={lead.id} templates={templates} />
+            )}
             <a
               href={`/leads/${lead.id}/resumo`}
               target="_blank"
