@@ -28,6 +28,7 @@ import { getToolsFor } from "@/lib/assistant/tools";
 import { canGenerateFromTemplates } from "@/lib/data/templates-permissions";
 import { friendlyApiError, withNotes } from "@/lib/assistant/turn";
 import { getSettings } from "@/lib/data/settings";
+import { MINUTA_TOOLS } from "@/lib/minutas/tool";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -206,7 +207,9 @@ export async function POST(request: Request) {
   const draftTools = writer
     ? DRAFT_TOOLS.filter((t) => t.name !== "preparar_modelo" || canGenerateFromTemplates(user.role))
     : [];
-  const tools = [...getToolsFor(isAdmin), ...draftTools];
+  // Minutas: só Admin e Advogado(a) (a ferramenta e as rotas também conferem).
+  const minutaTools = canGenerateFromTemplates(user.role) ? MINUTA_TOOLS : [];
+  const tools = [...getToolsFor(isAdmin), ...draftTools, ...minutaTools];
 
   const now = new Date();
   const client = new Anthropic();

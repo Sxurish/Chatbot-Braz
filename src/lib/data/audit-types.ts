@@ -47,6 +47,8 @@ export const ACTION_LABELS: Record<
   update_template: { label: "Atualizou template", tone: "update" },
   delete_template: { label: "Excluiu template", tone: "delete" },
   generate_doc: { label: "Gerou documento", tone: "create" },
+  assistant_minuta_generate: { label: "Gerou minuta com IA", tone: "create" },
+  assistant_minuta_save: { label: "Salvou minuta em Documentos", tone: "create" },
 };
 
 export function actionMeta(action: string) {
@@ -128,6 +130,10 @@ export const ENTITY_INFO: Record<string, EntityInfo> = {
   template: {
     label: "Template de documento",
     href: () => "/templates",
+  },
+  assistant_minuta: {
+    label: "Minuta do assistente",
+    href: () => "/assistente",
   },
 };
 

@@ -69,8 +69,8 @@ export interface ToolContext {
   attachment?: { id: string; name: string } | null;
   /** De onde veio a pergunta (fase 4: WhatsApp não tem cartão nem financeiro). */
   channel?: "painel" | "whatsapp";
-  /** Avisa a interface de algo novo (ex.: um rascunho para conferir). */
-  emit?: (event: { type: "draft"; draft: unknown }) => void;
+  /** Avisa a interface de algo novo (ex.: um rascunho para conferir ou uma minuta). */
+  emit?: (event: { type: "draft"; draft: unknown } | { type: "minuta"; minuta: unknown }) => void;
 }
 
 export interface AssistantTool<S extends z.ZodType = z.ZodType> {

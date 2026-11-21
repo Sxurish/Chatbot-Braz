@@ -145,7 +145,8 @@ export function getWhatsappTools(user: Pick<TeamUser, "role">): AssistantTool[] 
             t.name !== "preparar_documento" &&
             (t.name !== "preparar_modelo" || canGenerateFromTemplates(user.role))
         );
-  return [...consult, ...drafts];
+  // Minutas (redigir_minuta) só no CRM: nunca entram aqui.
+  return [...consult, ...drafts].filter((t) => t.name !== "redigir_minuta");
 }
 
 // ---------------------------------------------------------------------------

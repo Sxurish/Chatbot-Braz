@@ -30,6 +30,9 @@ No painel do projeto → **SQL Editor** → cole e rode, na ordem:
 > `supabase/assistente-fase2.sql`, `assistente-fase3.sql`, `assistente-fase4.sql`, `fase5-prazos.sql`,
 > `fase5-automacoes.sql`, `fase5-intimacoes.sql` e `correcao-cadastros.sql`.
 >
+> **Minutas pelo assistente:** rode `supabase/minutas.sql` (também depois do
+> `instalacao-completa.sql`, que ainda não inclui as minutas).
+>
 > **Intimações de hora em hora (opcional, depois do resto):** no SQL Editor,
 > guarde o `CRON_SECRET` no Vault digitando o valor à mão
 > (`select vault.create_secret('<o mesmo CRON_SECRET da Vercel>', 'cron_secret_intimacoes');`)

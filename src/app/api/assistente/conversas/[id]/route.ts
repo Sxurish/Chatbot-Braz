@@ -1,6 +1,7 @@
 import { listDrafts } from "@/lib/assistant/drafts";
 import { tierOfModel } from "@/lib/assistant/model-router";
 import { getAssistantSession } from "@/lib/assistant/session";
+import { listMinutas } from "@/lib/minutas/store";
 import { deleteConversation, getConversation, listMessages } from "@/lib/assistant/store";
 
 export const dynamic = "force-dynamic";
@@ -14,16 +15,17 @@ export async function GET(_req: Request, { params }: Params) {
   const { id } = await params;
   const conversation = await getConversation(session.user.id, id);
   if (!conversation) return Response.json({ error: "Conversa não encontrada." }, { status: 404 });
-  const [messages, drafts] = await Promise.all([
+  const [messages, drafts, minutas] = await Promise.all([
     listMessages(session.user.id, id),
     listDrafts(session.user.id, id),
+    listMinutas(session.user.id, id),
   ]);
   // "tier" alimenta a etiqueta "Resposta detalhada (Sonnet)" nas respostas antigas.
   const withTier = messages.map(({ model, ...m }) => ({
     ...m,
     ...(m.role === "assistant" && tierOfModel(model) ? { tier: tierOfModel(model) } : {}),
   }));
-  return Response.json({ conversation, messages: withTier, drafts });
+  return Response.json({ conversation, messages: withTier, drafts, minutas });
 }
 
 export async function DELETE(_req: Request, { params }: Params) {
